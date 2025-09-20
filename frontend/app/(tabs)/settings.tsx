@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, ScrollView, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, Alert, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
 import Button from "@/components/ui/button";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function SettingsScreen() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -55,35 +56,34 @@ export default function SettingsScreen() {
     router.push('/auth/login');
   };
 
+  const handleManageSubscription = () => {
+    console.log('Navigating to subscription management');
+    router.push('/subscription/manage');
+  };
+
+  const test = () => {
+    console.log('Navigating to payment settings');
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>Settings</Text>
         
-        {/* Authentication Status */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Authentication</Text>
-          <View style={styles.statusContainer}>
-            <View style={styles.statusRow}>
-              <Text style={styles.label}>Status:</Text>
-              <Text style={[styles.status, isLoggedIn ? styles.loggedIn : styles.loggedOut]}>
-                {isLoggedIn ? '✅ Logged In' : '❌ Not Logged In'}
-              </Text>
-            </View>
-            
-            {userEmail && (
-              <View style={styles.statusRow}>
-                <Text style={styles.label}>Email:</Text>
-                <Text style={styles.email}>{userEmail}</Text>
-              </View>
-            )}
-          </View>
+          <Text style={styles.sectionTitle}>Business Profile</Text>
         </View>
-
-        {/* Action Buttons */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Actions</Text>
-          
+          <Text style={styles.sectionTitle}>Payment Settings</Text>
+        </View>
+        <TouchableOpacity style={styles.section} onPress={handleManageSubscription}>
+          <View style={styles.sectionRow}>
+            <Text style={styles.sectionTitle}>Manage Subscription</Text>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </View>
+        </TouchableOpacity>
+
+        <View style={styles.section}>
           {isLoggedIn ? (
             <Button
               title={loading ? 'Logging out...' : 'Logout'}
@@ -102,6 +102,7 @@ export default function SettingsScreen() {
             />
           )}
         </View>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -138,8 +139,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: 15,
     color: '#333',
+  },
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   statusContainer: {
     gap: 10,
