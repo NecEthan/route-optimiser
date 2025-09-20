@@ -6,13 +6,33 @@ import { API_CONFIG } from "@/lib";
 
 type TabType = 'income' | 'expenses' | 'profit';
 
-interface Payments {
+// Transaction interface for standardized display format
+interface Transaction {
   id: string;
   date: string;
   description: string;
   amount: number;
   type: 'income' | 'expense';
   category: string;
+}
+
+interface Payment {
+  id: string;
+  amount: number;
+  payment_date: string;
+  method: string;
+  notes?: string;
+  customer_id?: string;
+  job_id?: string;
+  customers?: {
+    name: string;
+    email?: string;
+    phone?: string;
+  };
+  jobs?: {
+    description: string;
+    address?: string;
+  };
 }
 
 interface Expense {
@@ -26,20 +46,9 @@ interface Expense {
 export default function AccountingScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('income');
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [payments, setPayments] = useState<Payments[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const transactions = [
-    { id: '1', date: '2025-09-20', description: 'Window cleaning - Smith residence', amount: 150.00, type: 'income', category: 'Service' },
-    { id: '2', date: '2025-09-19', description: 'Office building cleaning', amount: 450.00, type: 'income', category: 'Commercial' },
-    { id: '3', date: '2025-09-18', description: 'Cleaning supplies', amount: 85.50, type: 'expense', category: 'Materials' },
-    { id: '4', date: '2025-09-17', description: 'Gas for van', amount: 45.00, type: 'expense', category: 'Transportation' },
-    { id: '5', date: '2025-09-16', description: 'Residential cleaning - Jones house', amount: 120.00, type: 'income', category: 'Service' },
-    { id: '6', date: '2025-09-15', description: 'Equipment maintenance', amount: 200.00, type: 'expense', category: 'Equipment' },
-    { id: '7', date: '2025-09-14', description: 'Commercial cleaning - Plaza Mall', amount: 800.00, type: 'income', category: 'Commercial' },
-    { id: '8', date: '2025-09-13', description: 'Insurance payment', amount: 300.00, type: 'expense', category: 'Insurance' },
-  ];
 
   useEffect(() => {
     fetchExpenses();
@@ -115,7 +124,8 @@ export default function AccountingScreen() {
     };
 
 
-  const expenseTransactions = expenses.map(expense => ({
+  // Convert API expenses to Transaction format for display
+  const expenseTransactions: Transaction[] = expenses.map(expense => ({
     id: expense.id,
     date: expense.expense_date,
     description: expense.notes || `${expense.category} expense`,
@@ -123,10 +133,20 @@ export default function AccountingScreen() {
     type: 'expense' as const,
     category: expense.category
   }));
-  console.log("Fetched expenses:", expenseTransactions);
 
-  // For now, using mock income data until we have income API
-  const incomeTransactions = transactions.filter(t => t.type === 'income');
+  // Convert API payments to Transaction format for display (income)
+  const incomeTransactions: Transaction[] = payments.map(payment => ({
+    id: payment.id,
+    date: payment.payment_date,
+    description: payment.customers?.name 
+      ? `Payment from ${payment.customers.name}${payment.jobs?.description ? ` - ${payment.jobs.description}` : ''}` 
+      : payment.notes || `${payment.method} payment`,
+    amount: typeof payment.amount === 'string' ? parseFloat(payment.amount) : payment.amount,
+    type: 'income' as const,
+    category: payment.method || 'cash'
+  }));
+
+  console.log("Fetched expenses:", expenseTransactions);
   console.log("Fetched income payments:", incomeTransactions);
   
   const totalIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
