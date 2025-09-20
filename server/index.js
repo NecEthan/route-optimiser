@@ -1,94 +1,107 @@
+require('dotenv').config({ path: '../.env' });
+
+console.log('🔍 Environment Debug:');
+console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
+console.log('ANON_KEY exists:', !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
+console.log('SERVICE_KEY exists:', !!process.env.SUPABASE_SERVICE_KEY);
+
 const express = require('express');
 const cors = require('cors');
-const { Pool } = require('pg');
-require('dotenv').config();
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// PostgreSQL connection pool
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT,
-});
+// Create Supabase clients
+const supabaseAuth = createClient(
+  process.env.SUPABASE_URL,
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
+);
+
+const supabaseDB = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
+
+// Test that clients are created
+console.log('🔌 Supabase Auth client created:', !!supabaseAuth);
+console.log('🔌 Supabase DB client created:', !!supabaseDB);
+
+// Export BEFORE setting up routes (important!)
+module.exports = { 
+  supabase: supabaseDB,
+  supabaseAuth: supabaseAuth
+};
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-// Test database connection
-pool.connect((err, client, release) => {
-  if (err) {
-    console.error('Error connecting to PostgreSQL database:', err);
-  } else {
-    console.log('✅ Connected to PostgreSQL database');
-    release();
+// Add request logging
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  next();
+});
+
+// Health check (uses database client)
+app.get('/health', async (req, res) => {
+  try {
+    const { data, error, count } = await supabaseDB
+      .from('customers')
+      .select('id', { count: 'exact', head: true });
+    
+    if (error) throw error;
+    
+    res.json({ 
+      status: 'healthy', 
+      database: 'connected',
+      customerCount: count,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Health check error:', error);
+    res.status(500).json({ 
+      status: 'error', 
+      message: error.message
+    });
   }
 });
 
 // Routes
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/customers', require('./routes/customers'));
+app.use('/api/routes', require('./routes/routes'));
+
+// Basic route
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Window Cleaner Route Optimizer API',
     version: '1.0.0',
-    status: 'running'
+    endpoints: [
+      'GET /health - Health check',
+      'POST /api/auth/register - Register user',
+      'POST /api/auth/login - Login user',
+      'GET /api/customers - Get customers (protected)',
+      'GET /api/routes - Route optimization (protected)'
+    ]
   });
 });
 
-// Health check endpoint
-app.get('/health', async (req, res) => {
-  try {
-    const client = await pool.connect();
-    const result = await client.query('SELECT NOW()');
-    client.release();
-    
-    res.json({
-      status: 'healthy',
-      database: 'connected',
-      timestamp: result.rows[0].now
-    });
-  } catch (error) {
-    res.status(500).json({
-      status: 'unhealthy',
-      database: 'disconnected',
-      error: error.message
-    });
-  }
-});
-
-// Import route files
-const customersRoutes = require('./routes/customers');
-const routesRoutes = require('./routes/routes');
-
-// Use routes
-app.use('/api/customers', customersRoutes);
-app.use('/api/routes', routesRoutes);
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    error: 'Something went wrong!',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+// Global error handler
+app.use((error, req, res, next) => {
+  console.error('❌ Global error:', error);
+  res.status(500).json({ 
+    message: 'Internal server error',
+    error: error.message 
   });
 });
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({
-    error: 'Route not found',
-    message: `Cannot ${req.method} ${req.originalUrl}`
-  });
+  res.status(404).json({ message: 'Route not found' });
 });
 
 app.listen(port, () => {
-  console.log(`🚀 Server running on port ${port}`);
-  console.log(`📍 API available at http://localhost:${port}`);
+  console.log(`🚀 Server running on http://localhost:${port}`);
+  console.log(`🔐 Register: http://localhost:${port}/api/auth/register`);
 });
-
-// Export for testing
-module.exports = app;
