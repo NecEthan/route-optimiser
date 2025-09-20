@@ -56,26 +56,27 @@ export default function SettingsScreen() {
     router.push('/auth/login');
   };
 
+  const handleBusinessProfile = () => {
+    console.log('Navigating to business profile');
+    router.push('/payment/settings');
+  };
+
   const handleManageSubscription = () => {
     console.log('Navigating to subscription management');
     router.push('/subscription/manage');
   };
-
-  const test = () => {
-    console.log('Navigating to payment settings');
-  }
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>Settings</Text>
         
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Business Profile</Text>
-        </View>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Payment Settings</Text>
-        </View>
+        <TouchableOpacity style={styles.section} onPress={handleBusinessProfile}>
+          <View style={styles.sectionRow}>
+            <Text style={styles.sectionTitle}>Business Profile</Text>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </View>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.section} onPress={handleManageSubscription}>
           <View style={styles.sectionRow}>
             <Text style={styles.sectionTitle}>Manage Subscription</Text>
