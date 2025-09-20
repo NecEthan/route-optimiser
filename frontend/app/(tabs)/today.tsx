@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, Text, View, SafeAreaView, Alert } from "react-native";
+import { StyleSheet, Text, View, SafeAreaView, Alert, ScrollView } from "react-native";
 import JobList from "@/components/ui/job-list";
 import Button from "@/components/ui/button";
 
@@ -19,7 +19,7 @@ export default function TodayScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+      <View style={styles.header}>
         <Text style={[styles.h1, styles.heading]}>Today</Text>
         
         <View style={styles.buttonContainer}>
@@ -37,8 +37,15 @@ export default function TodayScreen() {
             size="medium"
           />
         </View>
+      </View>
+      
+      <ScrollView 
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
+      >
+        <JobList showEdit={false} onEdit={() => {}} />
         
-        <JobList />
         <View style={[styles.buttonContainer, styles.center]}>
           <Button 
             title="Optimise Route" 
@@ -48,7 +55,7 @@ export default function TodayScreen() {
             length="medium"
           />
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -56,6 +63,12 @@ export default function TodayScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
     backgroundColor: '#f5f5f5',
   },
   heading: {
@@ -80,10 +93,17 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 20,
   },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
   center: {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 20,
   },
 });
