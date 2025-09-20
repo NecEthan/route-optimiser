@@ -22,7 +22,6 @@ export interface OptimizedRoute {
 }
 
 class RouteService {
-  // Get all routes
   async getAllRoutes() {
     try {
       const headers = await authService.getAuthHeaders();
@@ -44,7 +43,6 @@ class RouteService {
     }
   }
 
-  // Optimize route
   async optimizeRoute(routeData: RouteOptimizationRequest): Promise<OptimizedRoute> {
     try {
       const headers = await authService.getAuthHeaders();
@@ -67,7 +65,6 @@ class RouteService {
     }
   }
 
-  // Health check
   async healthCheck() {
     try {
       const response = await fetch(buildUrl(API_CONFIG.ENDPOINTS.HEALTH), {

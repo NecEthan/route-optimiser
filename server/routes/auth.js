@@ -1,8 +1,7 @@
 const express = require('express');
-const { supabaseAuth } = require('../index');  // Use supabaseAuth for auth operations
+const { supabaseAuth } = require('../index'); 
 const router = express.Router();
 
-// Register new user
 router.post('/register', async (req, res) => {
   try {
     console.log('📝 Registration request:', req.body.email);

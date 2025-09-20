@@ -2,7 +2,6 @@ const express = require('express');
 const { supabase } = require('../index');
 const router = express.Router();
 
-// Authentication middleware (same as in routes.js)
 const authenticateUser = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -35,10 +34,8 @@ const authenticateUser = async (req, res, next) => {
   }
 };
 
-// Apply authentication to all customer routes
 router.use(authenticateUser);
 
-// Get all customers (PROTECTED)
 router.get('/', async (req, res) => {
   try {
     console.log('📋 Fetching all customers...');
@@ -49,11 +46,9 @@ router.get('/', async (req, res) => {
       .order('name');
 
     if (error) {
-      console.error('❌ Error fetching customers:', error);
+      console.error('Error fetching customers:', error);
       throw error;
     }
-
-    console.log(`✅ Successfully fetched ${data.length} customers`);
 
     res.json({
       success: true,
@@ -62,7 +57,7 @@ router.get('/', async (req, res) => {
       user: req.user.email
     });
   } catch (error) {
-    console.error('❌ Get customers error:', error);
+    console.error('Get customers error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch customers',
@@ -71,7 +66,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get single customer by ID (PROTECTED)
 router.get('/:id', async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -95,7 +89,7 @@ router.get('/:id', async (req, res) => {
       data: data
     });
   } catch (error) {
-    console.error('❌ Get customer error:', error);
+    console.error('Get customer error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch customer',
@@ -104,7 +98,6 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create new customer (PROTECTED)
 router.post('/', async (req, res) => {
   try {
     const { name, email, phone, address, latitude, longitude, frequency } = req.body;
@@ -138,7 +131,7 @@ router.post('/', async (req, res) => {
       message: 'Customer created successfully'
     });
   } catch (error) {
-    console.error('❌ Create customer error:', error);
+    console.error('Create customer error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to create customer',
@@ -147,7 +140,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Update customer (PROTECTED)
 router.put('/:id', async (req, res) => {
   try {
     const { name, email, phone, address, latitude, longitude, frequency } = req.body;
@@ -184,7 +176,7 @@ router.put('/:id', async (req, res) => {
       message: 'Customer updated successfully'
     });
   } catch (error) {
-    console.error('❌ Update customer error:', error);
+    console.error('Update customer error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update customer',
@@ -193,7 +185,6 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Delete customer (PROTECTED)
 router.delete('/:id', async (req, res) => {
   try {
     const { error } = await supabase
@@ -208,7 +199,7 @@ router.delete('/:id', async (req, res) => {
       message: 'Customer deleted successfully'
     });
   } catch (error) {
-    console.error('❌ Delete customer error:', error);
+    console.error(' Delete customer error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete customer',
