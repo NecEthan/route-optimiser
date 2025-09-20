@@ -35,7 +35,27 @@ module.exports = {
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+
+// Custom JSON middleware that handles empty bodies
+app.use(express.json({
+  verify: (req, res, buf) => {
+    // Store raw body for debugging if needed
+    req.rawBody = buf;
+  }
+}));
+
+// JSON error handler middleware
+app.use((error, req, res, next) => {
+  if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
+    console.error('❌ JSON Parse Error:', error.message);
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid JSON in request body',
+      error: 'Please check your request body format'
+    });
+  }
+  next(error);
+});
 
 // Add request logging
 app.use((req, res, next) => {
@@ -71,6 +91,7 @@ app.get('/health', async (req, res) => {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/customers', require('./routes/customers'));
 app.use('/api/routes', require('./routes/routes'));
+app.use('/api/accounting', require('./routes/accounting'));
 
 // Basic route
 app.get('/', (req, res) => {
@@ -82,7 +103,8 @@ app.get('/', (req, res) => {
       'POST /api/auth/register - Register user',
       'POST /api/auth/login - Login user',
       'GET /api/customers - Get customers (protected)',
-      'GET /api/routes - Route optimization (protected)'
+      'GET /api/routes - Route optimization (protected)',
+      'GET /api/accounting - Get accounting data (protected)',
     ]
   });
 });

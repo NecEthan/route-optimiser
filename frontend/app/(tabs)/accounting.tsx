@@ -1,10 +1,12 @@
-import React, { useState } from "react";
-import { SafeAreaView, View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import React, { useEffect, useState } from "react";
+import { SafeAreaView, View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_CONFIG } from "@/lib";
 
 type TabType = 'income' | 'expenses' | 'profit';
 
-interface Transaction {
+interface Payments {
   id: string;
   date: string;
   description: string;
@@ -13,11 +15,22 @@ interface Transaction {
   category: string;
 }
 
+interface Expense {
+  id: string;
+  amount: number;
+  expense_date: string;
+  category: string;
+  notes?: string;
+}
+
 export default function AccountingScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('income');
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [payments, setPayments] = useState<Payments[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock financial data
-  const transactions: Transaction[] = [
+  const transactions = [
     { id: '1', date: '2025-09-20', description: 'Window cleaning - Smith residence', amount: 150.00, type: 'income', category: 'Service' },
     { id: '2', date: '2025-09-19', description: 'Office building cleaning', amount: 450.00, type: 'income', category: 'Commercial' },
     { id: '3', date: '2025-09-18', description: 'Cleaning supplies', amount: 85.50, type: 'expense', category: 'Materials' },
@@ -28,8 +41,93 @@ export default function AccountingScreen() {
     { id: '8', date: '2025-09-13', description: 'Insurance payment', amount: 300.00, type: 'expense', category: 'Insurance' },
   ];
 
+  useEffect(() => {
+    fetchExpenses();
+    fetchPayments();
+  }, []);
+
+  const fetchPayments = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const token = await AsyncStorage.getItem('access_token');
+      if (!token) {
+        setError('No authentication token found');
+        return;
+      }
+
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/accounting/payments`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setPayments(data.data);
+      } else {
+        setError(data.message || 'Failed to fetch payments');
+        console.error("Failed to fetch payments:", data.message);
+      }
+    }
+    catch (error) {
+      setError('Error fetching payments');
+      console.error("Error fetching payments:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+   const fetchExpenses = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const token = await AsyncStorage.getItem('access_token');
+        if (!token) {
+          setError('No authentication token found');
+          return;
+        }
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/api/accounting/expenses`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+          setExpenses(data.data);
+        } else {
+          setError(data.message || 'Failed to fetch expenses');
+          console.error("Failed to fetch expenses:", data.message);
+        }
+      }
+      catch (error) {
+        setError('Error fetching expenses');
+        console.error("Error fetching expenses:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+
+  const expenseTransactions = expenses.map(expense => ({
+    id: expense.id,
+    date: expense.expense_date,
+    description: expense.notes || `${expense.category} expense`,
+    amount: typeof expense.amount === 'string' ? parseFloat(expense.amount) : expense.amount,
+    type: 'expense' as const,
+    category: expense.category
+  }));
+  console.log("Fetched expenses:", expenseTransactions);
+
+  // For now, using mock income data until we have income API
   const incomeTransactions = transactions.filter(t => t.type === 'income');
-  const expenseTransactions = transactions.filter(t => t.type === 'expense');
+  console.log("Fetched income payments:", incomeTransactions);
   
   const totalIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
   const totalExpenses = expenseTransactions.reduce((sum, t) => sum + t.amount, 0);
@@ -68,8 +166,11 @@ export default function AccountingScreen() {
           emptyMessage: 'No expenses recorded'
         };
       case 'profit':
+        const allTransactions = [...incomeTransactions, ...expenseTransactions]
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
         return {
-          transactions: transactions,
+          transactions: allTransactions,
           total: netProfit,
           color: netProfit >= 0 ? '#28a745' : '#dc3545',
           icon: netProfit >= 0 ? 'trending-up' as const : 'trending-down' as const,
@@ -79,6 +180,43 @@ export default function AccountingScreen() {
   };
 
   const tabContent = getTabContent();
+
+  // Show loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Accounting</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.loadingText}>Loading accounting data...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Accounting</Text>
+        </View>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={48} color="#dc3545" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => {
+            setError(null);
+            // Re-trigger useEffect by changing a dependency or call fetchExpenses directly
+            setExpenses([]);
+          }}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -422,5 +560,40 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#999',
     marginTop: 12,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 12,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#dc3545',
+    textAlign: 'center',
+    marginTop: 12,
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
