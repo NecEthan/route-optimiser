@@ -4,12 +4,16 @@ import Customer from "./customer";
 import { API_CONFIG } from '@/lib';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const CustomerList = forwardRef(({ showEdit = true, onEdit }, ref) => {
+function CustomerList({ showEdit = true, onEdit }, ref) {
     const [customers, setCustomers] = useState([]);
 
     const fetchCustomers = async () => {
         try {
+            console.log('🔄 Starting to fetch customers...');
+            console.log('📍 API URL:', API_CONFIG.BASE_URL + '/api/customers');
+            
             const token = await AsyncStorage.getItem('access_token');
+            console.log('🔑 Token exists:', !!token);
             
             const response = await fetch(API_CONFIG.BASE_URL + '/api/customers', {
                 method: 'GET',
@@ -18,14 +22,21 @@ const CustomerList = forwardRef(({ showEdit = true, onEdit }, ref) => {
                     'Authorization': `Bearer ${token}`,
                 },
             });
+            
+            console.log('📡 Response status:', response.status);
+            console.log('📡 Response ok:', response.ok);
+            
             const data = await response.json();
-            console.log("Got customers:", data);
+            console.log("✅ Got customers data:", data);
+            console.log("📊 Data type:", typeof data, Array.isArray(data));
             
             const customers = Array.isArray(data) ? data : data.data || [];
+            console.log("👥 Final customers array:", customers.length, "customers");
             setCustomers(customers);
 
         } catch (error) {
-            console.error("Error fetching customers:", error);
+            console.error("❌ Error fetching customers:", error);
+            console.error("❌ Error details:", error.message, error.name);
             setCustomers([]);
         }
     };
@@ -57,11 +68,9 @@ const CustomerList = forwardRef(({ showEdit = true, onEdit }, ref) => {
             ))}
         </View>
     );
-});
+}
 
-CustomerList.displayName = 'CustomerList';
-
-export default CustomerList;
+export default forwardRef(CustomerList);
 
 const styles = StyleSheet.create({
     container: {

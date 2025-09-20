@@ -27,23 +27,9 @@ export default function AccountingScreen() {
              <View style={styles.container}>
                <Text style={[styles.h1, styles.heading]}>Accounting</Text>
                
-               <View style={styles.buttonContainer}>
-                 <Button 
-                   title="Refresh Data" 
-                   onPress={handleRefresh}
-                   variant="primary"
-                   size="medium"
-                 />
-                 
-                 <Button 
-                   title="Generate Report" 
-                   onPress={handleGenerateReport}
-                   variant="outline"
-                   size="medium"
-                 />
-               </View>
+             
                
-               <JobList showEdit={true} onEdit={handleEditTransaction} />
+           
                
                <View style={[styles.buttonContainer, styles.center]}>
                  <Button 

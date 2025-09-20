@@ -1,19 +1,20 @@
 import React, { useState, useRef } from "react";
-import { Alert, SafeAreaView, View, StyleSheet, Text } from "react-native";
+import { Alert, SafeAreaView, View, StyleSheet, Text, ScrollView } from "react-native";
 import Button from "@/components/ui/button";
 import CustomerList from "@/components/ui/customer-list";
 import AddCustomerModal from "@/components/ui/add-customer-modal";
 
 export default function CustomersScreen() {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const customerListRef = useRef<any>(null);
 
   const handleRefresh = () => {
-    // Trigger refresh of the customer list
     if (customerListRef.current?.refreshCustomers) {
       customerListRef.current.refreshCustomers();
+    } else {
+      setRefreshTrigger(prev => prev + 1);
     }
-    Alert.alert("Refresh", "Customer list refreshed!");
   };
 
   const handleAddCustomer = () => {
@@ -24,6 +25,8 @@ export default function CustomersScreen() {
     // Refresh the customer list when a new customer is added
     if (customerListRef.current?.refreshCustomers) {
       customerListRef.current.refreshCustomers();
+    } else {
+      setRefreshTrigger(prev => prev + 1);
     }
   };
 
@@ -37,7 +40,7 @@ export default function CustomersScreen() {
    
      return (
        <SafeAreaView style={styles.safeArea}>
-         <View style={styles.container}>
+         <View style={styles.header}>
            <Text style={[styles.h1, styles.heading]}>Customers</Text>
            
            <View style={styles.buttonContainer}>
@@ -54,11 +57,18 @@ export default function CustomersScreen() {
                size="medium"
              />
            </View>
-           
+         </View>
+
+         <ScrollView 
+           style={styles.scrollContainer}
+           contentContainerStyle={styles.scrollContent}
+           showsVerticalScrollIndicator={true}
+         >
            <CustomerList 
              ref={customerListRef}
              showEdit={true} 
-             onEdit={handleEditCustomer} 
+             onEdit={handleEditCustomer}
+             key={refreshTrigger}
            />
            
            <View style={[styles.buttonContainer, styles.center]}>
@@ -70,7 +80,7 @@ export default function CustomersScreen() {
                length="medium"
              />
            </View>
-         </View>
+         </ScrollView>
 
          <AddCustomerModal
            visible={showAddModal}
@@ -84,6 +94,12 @@ export default function CustomersScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
     backgroundColor: '#f5f5f5',
   },
   heading: {
@@ -108,10 +124,17 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 20,
   },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
   center: {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 20,
   },
 });

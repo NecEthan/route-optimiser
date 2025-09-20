@@ -38,7 +38,6 @@ router.use(authenticateUser);
 
 router.get('/', async (req, res) => {
   try {
-    console.log('📋 Fetching all customers...');
     
     const { data, error } = await supabase
       .from('customers')
@@ -98,7 +97,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('add/', async (req, res) => {
   try {
     const { name, email, phone, address, latitude, longitude, frequency } = req.body;
 

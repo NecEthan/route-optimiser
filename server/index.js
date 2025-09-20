@@ -101,7 +101,8 @@ app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
   console.log(`🚀 Server running on http://localhost:${port}`);
+  console.log(`📱 Mobile access: http://192.168.0.79:${port}`);
   console.log(`🔐 Register: http://localhost:${port}/api/auth/register`);
 });
