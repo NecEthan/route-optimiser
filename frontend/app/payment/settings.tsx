@@ -1,88 +1,200 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Alert, ScrollView, SafeAreaView, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Alert, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import Button from "@/components/ui/button";
 import { Ionicons } from '@expo/vector-icons';
 
-interface BusinessInfo {
-  businessName: string;
-  phoneNumber: string;
-  emailAddress: string;
-  physicalAddress: {
-    street: string;
-    city: string;
-    state: string;
-    zipCode: string;
-    country: string;
-  };
+interface PaymentMethod {
+  id: string;
+  type: 'visa' | 'mastercard' | 'amex' | 'discover';
+  lastFour: string;
+  expiryMonth: number;
+  expiryYear: number;
+  isDefault: boolean;
+  holderName: string;
+}
+
+interface BillingHistoryItem {
+  id: string;
+  date: string;
+  amount: number;
+  status: 'paid' | 'pending' | 'failed';
+  invoiceNumber: string;
+  description: string;
 }
 
 export default function PaymentSettingsScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [editing, setEditing] = useState(false);
   
-  const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({
-    businessName: 'Clean Windows Pro',
-    phoneNumber: '+1 (555) 123-4567',
-    emailAddress: 'contact@cleanwindowspro.com',
-    physicalAddress: {
-      street: '123 Main Street',
-      city: 'Anytown',
-      state: 'CA',
-      zipCode: '90210',
-      country: 'United States'
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
+    {
+      id: '1',
+      type: 'visa',
+      lastFour: '4242',
+      expiryMonth: 12,
+      expiryYear: 2025,
+      isDefault: true,
+      holderName: 'John Doe'
+    },
+    {
+      id: '2',
+      type: 'mastercard',
+      lastFour: '5555',
+      expiryMonth: 8,
+      expiryYear: 2026,
+      isDefault: false,
+      holderName: 'John Doe'
     }
-  });
+  ]);
 
-  const [editedInfo, setEditedInfo] = useState<BusinessInfo>(businessInfo);
+  const [billingHistory] = useState<BillingHistoryItem[]>([
+    {
+      id: '1',
+      date: '2025-09-01',
+      amount: 9.99,
+      status: 'paid',
+      invoiceNumber: 'INV-2025-001',
+      description: 'Basic Plan - Monthly'
+    },
+    {
+      id: '2',
+      date: '2025-08-01',
+      amount: 9.99,
+      status: 'paid',
+      invoiceNumber: 'INV-2025-002',
+      description: 'Basic Plan - Monthly'
+    },
+    {
+      id: '3',
+      date: '2025-07-01',
+      amount: 9.99,
+      status: 'paid',
+      invoiceNumber: 'INV-2025-003',
+      description: 'Basic Plan - Monthly'
+    }
+  ]);
 
-  const handleEdit = () => {
-    setEditing(true);
-    setEditedInfo(businessInfo);
+  const getCardIcon = (type: PaymentMethod['type']) => {
+    switch (type) {
+      case 'visa':
+        return 'card';
+      case 'mastercard':
+        return 'card';
+      case 'amex':
+        return 'card';
+      case 'discover':
+        return 'card';
+      default:
+        return 'card';
+    }
   };
 
-  const handleCancel = () => {
-    setEditing(false);
-    setEditedInfo(businessInfo);
+  const getCardName = (type: PaymentMethod['type']) => {
+    switch (type) {
+      case 'visa':
+        return 'Visa';
+      case 'mastercard':
+        return 'Mastercard';
+      case 'amex':
+        return 'American Express';
+      case 'discover':
+        return 'Discover';
+      default:
+        return 'Credit Card';
+    }
   };
 
-  const handleSave = async () => {
+  const handleAddPaymentMethod = () => {
+    Alert.alert('Add Payment Method', 'This would open a secure card entry form.');
+  };
+
+  const handleUpdateCard = (cardId: string) => {
+    Alert.alert('Update Card', `This would open an update form for card ending in ${paymentMethods.find(p => p.id === cardId)?.lastFour}`);
+  };
+
+  const handleSetDefaultCard = async (cardId: string) => {
     setLoading(true);
     try {
-      // Simulate API call to save business information
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      setBusinessInfo(editedInfo);
-      setEditing(false);
-      Alert.alert('Success', 'Business information updated successfully!');
+      setPaymentMethods(prev => 
+        prev.map(method => ({
+          ...method,
+          isDefault: method.id === cardId
+        }))
+      );
+      
+      Alert.alert('Success', 'Default payment method updated!');
     } catch (error) {
-      console.error('Save error:', error);
-      Alert.alert('Error', 'Failed to save changes. Please try again.');
+      console.error('Set default error:', error);
+      Alert.alert('Error', 'Failed to update default payment method.');
     } finally {
       setLoading(false);
     }
   };
 
-  const updateBusinessInfo = (field: keyof BusinessInfo, value: string) => {
-    setEditedInfo(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  const handleRemoveCard = (cardId: string) => {
+    const card = paymentMethods.find(p => p.id === cardId);
+    if (card?.isDefault && paymentMethods.length > 1) {
+      Alert.alert('Error', 'Cannot remove default payment method. Please set another card as default first.');
+      return;
+    }
+
+    Alert.alert(
+      'Remove Payment Method',
+      `Are you sure you want to remove the card ending in ${card?.lastFour}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            setPaymentMethods(prev => prev.filter(method => method.id !== cardId));
+            Alert.alert('Success', 'Payment method removed.');
+          }
+        }
+      ]
+    );
   };
 
-  const updateAddress = (field: keyof BusinessInfo['physicalAddress'], value: string) => {
-    setEditedInfo(prev => ({
-      ...prev,
-      physicalAddress: {
-        ...prev.physicalAddress,
-        [field]: value
-      }
-    }));
+  const handleDownloadInvoice = (invoiceNumber: string) => {
+    Alert.alert('Download Invoice', `This would download invoice ${invoiceNumber}`);
   };
 
-  const formatAddress = (address: BusinessInfo['physicalAddress']) => {
-    return `${address.street}\n${address.city}, ${address.state} ${address.zipCode}\n${address.country}`;
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const getStatusColor = (status: BillingHistoryItem['status']) => {
+    switch (status) {
+      case 'paid':
+        return '#28a745';
+      case 'pending':
+        return '#ffc107';
+      case 'failed':
+        return '#dc3545';
+      default:
+        return '#666';
+    }
+  };
+
+  const getStatusText = (status: BillingHistoryItem['status']) => {
+    switch (status) {
+      case 'paid':
+        return 'Paid';
+      case 'pending':
+        return 'Pending';
+      case 'failed':
+        return 'Failed';
+      default:
+        return 'Unknown';
+    }
   };
 
   return (
@@ -92,185 +204,145 @@ export default function PaymentSettingsScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Business Profile</Text>
-        <TouchableOpacity onPress={editing ? handleCancel : handleEdit} style={styles.editButton}>
-          <Text style={styles.editButtonText}>{editing ? 'Cancel' : 'Edit'}</Text>
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Payment Settings</Text>
+        <View style={styles.backButton} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Business Information Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Business Information</Text>
-          
-          {/* Business Name */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Business Name</Text>
-            {editing ? (
-              <TextInput
-                style={styles.textInput}
-                value={editedInfo.businessName}
-                onChangeText={(value) => updateBusinessInfo('businessName', value)}
-                placeholder="Enter business name"
-              />
-            ) : (
-              <Text style={styles.fieldValue}>{businessInfo.businessName}</Text>
-            )}
-          </View>
-
-          {/* Phone Number */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Phone Number</Text>
-            {editing ? (
-              <TextInput
-                style={styles.textInput}
-                value={editedInfo.phoneNumber}
-                onChangeText={(value) => updateBusinessInfo('phoneNumber', value)}
-                placeholder="Enter phone number"
-                keyboardType="phone-pad"
-              />
-            ) : (
-              <Text style={styles.fieldValue}>{businessInfo.phoneNumber}</Text>
-            )}
-          </View>
-
-          {/* Email Address */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Email Address</Text>
-            {editing ? (
-              <TextInput
-                style={styles.textInput}
-                value={editedInfo.emailAddress}
-                onChangeText={(value) => updateBusinessInfo('emailAddress', value)}
-                placeholder="Enter email address"
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            ) : (
-              <Text style={styles.fieldValue}>{businessInfo.emailAddress}</Text>
-            )}
-          </View>
-        </View>
-
-        {/* Physical Address Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Physical Address</Text>
-          
-          {editing ? (
-            <>
-              {/* Street Address */}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>Street Address</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={editedInfo.physicalAddress.street}
-                  onChangeText={(value) => updateAddress('street', value)}
-                  placeholder="Enter street address"
-                />
-              </View>
-
-              {/* City */}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>City</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={editedInfo.physicalAddress.city}
-                  onChangeText={(value) => updateAddress('city', value)}
-                  placeholder="Enter city"
-                />
-              </View>
-
-              {/* State and Zip Code */}
-              <View style={styles.rowContainer}>
-                <View style={[styles.fieldContainer, styles.halfWidth]}>
-                  <Text style={styles.fieldLabel}>State</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={editedInfo.physicalAddress.state}
-                    onChangeText={(value) => updateAddress('state', value)}
-                    placeholder="State"
-                  />
-                </View>
-                <View style={[styles.fieldContainer, styles.halfWidth]}>
-                  <Text style={styles.fieldLabel}>Zip Code</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={editedInfo.physicalAddress.zipCode}
-                    onChangeText={(value) => updateAddress('zipCode', value)}
-                    placeholder="Zip Code"
-                    keyboardType="numeric"
-                  />
-                </View>
-              </View>
-
-              {/* Country */}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>Country</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={editedInfo.physicalAddress.country}
-                  onChangeText={(value) => updateAddress('country', value)}
-                  placeholder="Enter country"
-                />
-              </View>
-            </>
-          ) : (
-            <View style={styles.addressContainer}>
-              <Text style={styles.addressText}>{formatAddress(businessInfo.physicalAddress)}</Text>
-            </View>
-          )}
-        </View>
-
         {/* Payment Methods Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Payment Methods</Text>
           
-          <TouchableOpacity style={styles.paymentMethodCard}>
-            <View style={styles.paymentMethodContent}>
-              <Ionicons name="card" size={24} color="#007AFF" />
-              <View style={styles.paymentMethodText}>
-                <Text style={styles.paymentMethodTitle}>Credit Card</Text>
-                <Text style={styles.paymentMethodSubtitle}>•••• •••• •••• 4242</Text>
+          {paymentMethods.map((method) => (
+            <View key={method.id} style={styles.paymentMethodCard}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardInfo}>
+                  <Ionicons name={getCardIcon(method.type)} size={24} color="#007AFF" />
+                  <View style={styles.cardDetails}>
+                    <Text style={styles.cardType}>{getCardName(method.type)}</Text>
+                    <Text style={styles.cardNumber}>•••• •••• •••• {method.lastFour}</Text>
+                    <Text style={styles.cardExpiry}>
+                      Expires {method.expiryMonth.toString().padStart(2, '0')}/{method.expiryYear}
+                    </Text>
+                  </View>
+                </View>
+                {method.isDefault && (
+                  <View style={styles.defaultBadge}>
+                    <Text style={styles.defaultBadgeText}>Default</Text>
+                  </View>
+                )}
               </View>
-              <Ionicons name="chevron-forward" size={16} color="#999" />
-            </View>
-          </TouchableOpacity>
 
-          <TouchableOpacity style={styles.addPaymentButton}>
+              <View style={styles.cardActions}>
+                <Button
+                  title="Update Card"
+                  onPress={() => handleUpdateCard(method.id)}
+                  variant="secondary"
+                  size="small"
+                />
+                
+                {!method.isDefault && (
+                  <Button
+                    title="Set as Default"
+                    onPress={() => handleSetDefaultCard(method.id)}
+                    variant="outline"
+                    size="small"
+                    loading={loading}
+                    disabled={loading}
+                  />
+                )}
+                
+                <TouchableOpacity
+                  onPress={() => handleRemoveCard(method.id)}
+                  style={styles.removeButton}
+                >
+                  <Ionicons name="trash-outline" size={16} color="#dc3545" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+
+          <TouchableOpacity style={styles.addPaymentButton} onPress={handleAddPaymentMethod}>
             <Ionicons name="add-circle-outline" size={20} color="#007AFF" />
-            <Text style={styles.addPaymentText}>Add Payment Method</Text>
+            <Text style={styles.addPaymentText}>Add New Payment Method</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Billing Information */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Billing Information</Text>
+          <View style={styles.billingInfoCard}>
+            <View style={styles.billingRow}>
+              <Text style={styles.billingLabel}>Next billing date:</Text>
+              <Text style={styles.billingValue}>Dec 20, 2025</Text>
+            </View>
+            <View style={styles.billingRow}>
+              <Text style={styles.billingLabel}>Billing cycle:</Text>
+              <Text style={styles.billingValue}>Monthly</Text>
+            </View>
+            <View style={styles.billingRow}>
+              <Text style={styles.billingLabel}>Current amount:</Text>
+              <Text style={styles.billingValue}>$9.99/month</Text>
+            </View>
+          </View>
         </View>
 
         {/* Billing History Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Billing History</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Billing History</Text>
+            <TouchableOpacity>
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
+          </View>
           
-          <TouchableOpacity style={styles.billingHistoryCard}>
-            <View style={styles.billingHistoryContent}>
-              <Ionicons name="document-text-outline" size={24} color="#007AFF" />
-              <View style={styles.billingHistoryText}>
-                <Text style={styles.billingHistoryTitle}>View Billing History</Text>
-                <Text style={styles.billingHistorySubtitle}>Download invoices and receipts</Text>
+          {billingHistory.slice(0, 3).map((item) => (
+            <View key={item.id} style={styles.historyItem}>
+              <View style={styles.historyContent}>
+                <View style={styles.historyLeft}>
+                  <Text style={styles.historyDate}>{formatDate(item.date)}</Text>
+                  <Text style={styles.historyDescription}>{item.description}</Text>
+                  <Text style={styles.historyInvoice}>Invoice: {item.invoiceNumber}</Text>
+                </View>
+                
+                <View style={styles.historyRight}>
+                  <Text style={styles.historyAmount}>${item.amount.toFixed(2)}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
+                    <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
+                      {getStatusText(item.status)}
+                    </Text>
+                  </View>
+                </View>
               </View>
-              <Ionicons name="chevron-forward" size={16} color="#999" />
+              
+              <View style={styles.historyActions}>
+                <TouchableOpacity
+                  onPress={() => handleDownloadInvoice(item.invoiceNumber)}
+                  style={styles.downloadButton}
+                >
+                  <Ionicons name="download-outline" size={16} color="#007AFF" />
+                  <Text style={styles.downloadText}>Download</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </TouchableOpacity>
+          ))}
         </View>
 
-        {/* Save Button */}
-        {editing && (
-          <View style={styles.saveButtonContainer}>
-            <Button
-              title={loading ? 'Saving...' : 'Save Changes'}
-              onPress={handleSave}
-              variant="primary"
-              size="large"
-              loading={loading}
-              disabled={loading}
-            />
+        {/* Security Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Security</Text>
+          <View style={styles.securityCard}>
+            <View style={styles.securityRow}>
+              <Ionicons name="shield-checkmark" size={24} color="#28a745" />
+              <View style={styles.securityContent}>
+                <Text style={styles.securityTitle}>Secure Payments</Text>
+                <Text style={styles.securitySubtitle}>
+                  Your payment information is encrypted and secure
+                </Text>
+              </View>
+            </View>
           </View>
-        )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -303,15 +375,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
   },
-  editButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  editButtonText: {
-    fontSize: 16,
-    color: '#007AFF',
-    fontWeight: '600',
-  },
   scrollContent: {
     padding: 20,
   },
@@ -332,72 +395,72 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     color: '#333',
   },
-  fieldContainer: {
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 20,
   },
-  fieldLabel: {
+  viewAllText: {
     fontSize: 14,
+    color: '#007AFF',
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  fieldValue: {
-    fontSize: 16,
-    color: '#666',
-    paddingVertical: 12,
-    paddingHorizontal: 0,
-  },
-  textInput: {
-    fontSize: 16,
-    color: '#333',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#f9f9f9',
-  },
-  rowContainer: {
-    flexDirection: 'row',
-    gap: 15,
-  },
-  halfWidth: {
-    flex: 1,
-  },
-  addressContainer: {
-    backgroundColor: '#f9f9f9',
-    borderRadius: 8,
-    padding: 16,
-  },
-  addressText: {
-    fontSize: 16,
-    color: '#666',
-    lineHeight: 24,
   },
   paymentMethodCard: {
     borderWidth: 1,
     borderColor: '#e0e0e0',
-    borderRadius: 8,
+    borderRadius: 12,
+    padding: 16,
     marginBottom: 15,
   },
-  paymentMethodContent: {
+  cardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 15,
+  },
+  cardInfo: {
+    flexDirection: 'row',
+    flex: 1,
     gap: 12,
   },
-  paymentMethodText: {
+  cardDetails: {
     flex: 1,
   },
-  paymentMethodTitle: {
+  cardType: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
   },
-  paymentMethodSubtitle: {
+  cardNumber: {
     fontSize: 14,
     color: '#666',
     marginTop: 2,
+  },
+  cardExpiry: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
+  },
+  defaultBadge: {
+    backgroundColor: '#28a745',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  defaultBadgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  cardActions: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
+  removeButton: {
+    padding: 8,
+    marginLeft: 'auto',
   },
   addPaymentButton: {
     flexDirection: 'row',
@@ -407,7 +470,7 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 1,
     borderColor: '#007AFF',
-    borderRadius: 8,
+    borderRadius: 12,
     borderStyle: 'dashed',
   },
   addPaymentText: {
@@ -415,32 +478,103 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontWeight: '600',
   },
-  billingHistoryCard: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-  },
-  billingHistoryContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
+  billingInfoCard: {
     gap: 12,
   },
-  billingHistoryText: {
-    flex: 1,
+  billingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  billingHistoryTitle: {
-    fontSize: 16,
+  billingLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  billingValue: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#333',
   },
-  billingHistorySubtitle: {
+  historyItem: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
+  },
+  historyContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  historyLeft: {
+    flex: 1,
+  },
+  historyDate: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  historyDescription: {
     fontSize: 14,
     color: '#666',
     marginTop: 2,
   },
-  saveButtonContainer: {
-    marginTop: 20,
-    marginBottom: 40,
+  historyInvoice: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
+  },
+  historyRight: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  historyAmount: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  historyActions: {
+    alignItems: 'flex-start',
+  },
+  downloadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  downloadText: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  securityCard: {
+    padding: 0,
+  },
+  securityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  securityContent: {
+    flex: 1,
+  },
+  securityTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  securitySubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
   },
 });

@@ -57,13 +57,15 @@ export default function SettingsScreen() {
   };
 
   const handleBusinessProfile = () => {
-    console.log('Navigating to business profile');
-    router.push('/payment/settings');
+    router.push('/business/profile');
   };
 
   const handleManageSubscription = () => {
-    console.log('Navigating to subscription management');
     router.push('/subscription/manage');
+  };
+
+  const handlePaymentSettings = () => {
+    router.push('/payment/settings');
   };
 
   return (
@@ -74,6 +76,12 @@ export default function SettingsScreen() {
         <TouchableOpacity style={styles.section} onPress={handleBusinessProfile}>
           <View style={styles.sectionRow}>
             <Text style={styles.sectionTitle}>Business Profile</Text>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.section} onPress={handlePaymentSettings}>
+          <View style={styles.sectionRow}>
+            <Text style={styles.sectionTitle}>Payment Settings</Text>
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </View>
         </TouchableOpacity>
