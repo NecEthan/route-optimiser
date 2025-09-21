@@ -220,7 +220,8 @@ router.put('/:id', async (req, res) => {
       price, 
       frequency, 
       estimated_duration,
-      active
+      active,
+      paid_in_cash
     } = req.body;
 
     const { data: existingJob, error: fetchError } = await supabase
@@ -246,6 +247,7 @@ router.put('/:id', async (req, res) => {
     if (frequency !== undefined) updateData.frequency = frequency;
     if (estimated_duration !== undefined) updateData.estimated_duration = estimated_duration ? parseInt(estimated_duration) : null;
     if (active !== undefined) updateData.active = active;
+    if (paid_in_cash !== undefined) updateData.paid_in_cash = paid_in_cash;
 
     const { data, error } = await supabase
       .from('jobs')

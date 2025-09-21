@@ -1,4 +1,4 @@
-import React, { useState, useEffect, use } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -13,17 +13,15 @@ import {
 import Button from './button';
 import { API_CONFIG } from '@/lib';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getUserId } from '@/services/sharedService';
 
 type Customer = {
-  latitude: string;
-  longitude: string;
   id?: string | number;
   name: string;
   address: string;
   phone?: string;
   email?: string;
-  frequency?: string;
+  latitude?: number;
+  longitude?: number;
   created_at?: string;
   updated_at?: string;
 };
@@ -49,28 +47,19 @@ export default function EditCustomerModal({
     address: '',
     latitude: '',
     longitude: '',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    userId: '',
-    frequency: 'monthly', 
   });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const loadCustomerData = async () => {
       if (customer) {
-        const userId = await getUserId();
         setFormData({
           name: customer.name || '',
           email: customer.email || '',
           phone: customer.phone || '',
           address: customer.address || '',
-          latitude: customer.latitude || '',
-          longitude: customer.longitude || '',
-          created_at: customer.created_at || new Date().toISOString(),
-          updated_at: customer.updated_at || new Date().toISOString(),
-          userId: userId || '',
-          frequency: customer.frequency || 'monthly',
+          latitude: customer.latitude ? customer.latitude.toString() : '',
+          longitude: customer.longitude ? customer.longitude.toString() : '',
         });
       }
     };
@@ -78,8 +67,7 @@ export default function EditCustomerModal({
     loadCustomerData();
   }, [customer]);
 
-  const resetForm = async () => {
-    const userId = await getUserId();
+  const resetForm = () => {
     setFormData({
       name: '',
       email: '',
@@ -87,15 +75,11 @@ export default function EditCustomerModal({
       address: '',
       latitude: '',
       longitude: '',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      userId: userId || '',
-      frequency: 'monthly',
     });
   };
 
-  const handleClose = async () => {
-    await resetForm();
+  const handleClose = () => {
+    resetForm();
     onClose();
   };
 
@@ -115,7 +99,17 @@ export default function EditCustomerModal({
     try {
       const token = await AsyncStorage.getItem('access_token');
       
-      const test = {customerId: customer.id, ...formData}
+      // Only send fields that exist in the database schema
+      const updateData = {
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        address: formData.address.trim(),
+        latitude: formData.latitude.trim(),
+        longitude: formData.longitude.trim(),
+      };
+      
+      console.log('Sending update data:', updateData);
       
       const response = await fetch(`${API_CONFIG.BASE_URL}/api/customers/${customer.id}`, {
         method: 'PUT',
@@ -123,10 +117,11 @@ export default function EditCustomerModal({
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(test),
+        body: JSON.stringify(updateData),
       });
 
       const result = await response.json();
+      console.log('Update response:', result);
 
       if (response.ok && result.success) {
         handleClose();
@@ -213,22 +208,6 @@ export default function EditCustomerModal({
               numberOfLines={3}
               autoCapitalize="words"
             />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Service Frequency</Text>
-            <View style={styles.frequencyContainer}>
-              {['weekly', 'bi-weekly', 'monthly', 'quarterly'].map((freq) => (
-                <Button
-                  key={freq}
-                  title={freq.charAt(0).toUpperCase() + freq.slice(1)}
-                  onPress={() => setFormData({ ...formData, frequency: freq })}
-                  variant={formData.frequency === freq ? 'primary' : 'outline'}
-                  size="small"
-                  style={styles.frequencyButton}
-                />
-              ))}
-            </View>
           </View>
         </ScrollView>
 

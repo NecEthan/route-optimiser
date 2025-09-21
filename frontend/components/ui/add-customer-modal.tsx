@@ -30,7 +30,6 @@ export default function AddCustomerModal({
     email: '',
     phone: '',
     address: '',
-    frequency: 'monthly',
   });
   const [loading, setLoading] = useState(false);
 
@@ -40,7 +39,6 @@ export default function AddCustomerModal({
       email: '',
       phone: '',
       address: '',
-      frequency: 'monthly',
     });
   };
 
@@ -156,22 +154,6 @@ export default function AddCustomerModal({
               numberOfLines={3}
               autoCapitalize="words"
             />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Service Frequency</Text>
-            <View style={styles.frequencyContainer}>
-              {['weekly', 'bi-weekly', 'monthly', 'quarterly'].map((freq) => (
-                <Button
-                  key={freq}
-                  title={freq.charAt(0).toUpperCase() + freq.slice(1)}
-                  onPress={() => setFormData({ ...formData, frequency: freq })}
-                  variant={formData.frequency === freq ? 'primary' : 'outline'}
-                  size="small"
-                  style={styles.frequencyButton}
-                />
-              ))}
-            </View>
           </View>
         </ScrollView>
 

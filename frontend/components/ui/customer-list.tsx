@@ -10,7 +10,8 @@ type CustomerType = {
     address: string;
     phone?: string;
     email?: string;
-    frequency?: string;
+    latitude?: number;
+    longitude?: number;
     created_at?: string;
     updated_at?: string;
 };
@@ -30,11 +31,7 @@ const CustomerList = forwardRef<CustomerListRef, CustomerListProps>(({ showEdit 
     
     const fetchCustomers = async () => {
         try {
-            console.log('🔄 Starting to fetch customers...');
-            console.log('📍 API URL:', API_CONFIG.BASE_URL + '/api/customers');
-            
             const token = await AsyncStorage.getItem('access_token');
-            console.log('🔑 Token exists:', !!token);
             
             const response = await fetch(API_CONFIG.BASE_URL + '/api/customers', {
                 method: 'GET',
@@ -44,20 +41,13 @@ const CustomerList = forwardRef<CustomerListRef, CustomerListProps>(({ showEdit 
                 },
             });
             
-            console.log('📡 Response status:', response.status);
-            console.log('📡 Response ok:', response.ok);
-            
             const data = await response.json();
-            console.log("✅ Got customers data:", data);
-            console.log("📊 Data type:", typeof data, Array.isArray(data));
             
             const customers = Array.isArray(data) ? data : data.data || [];
-            console.log("👥 Final customers array:", customers.length, "customers");
             setCustomers(customers);
 
         } catch (error: any) {
-            console.error("❌ Error fetching customers:", error);
-            console.error("❌ Error details:", error.message, error.name);
+            console.error("Error details:", error.message, error.name);
             setCustomers([]);
         }
     };
@@ -66,13 +56,12 @@ const CustomerList = forwardRef<CustomerListRef, CustomerListProps>(({ showEdit 
         fetchCustomers();
     }, []);
 
-    // Expose refresh method to parent component
     useImperativeHandle(ref, () => ({
         refreshCustomers: fetchCustomers,
     }));
 
     const handleCustomerToggle = (customerId: string | number, isChecked: boolean) => {
-        console.log(`Customer ${customerId} ${isChecked ? 'checked' : 'unchecked'}`);
+        // console.log(`Customer ${customerId} ${isChecked ? 'checked' : 'unchecked'}`);
     };
 
     return (

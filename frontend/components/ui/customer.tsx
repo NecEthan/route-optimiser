@@ -9,7 +9,8 @@ type CustomerProps = {
     address: string;
     phone?: string;
     email?: string;
-    frequency?: string;
+    latitude?: number;
+    longitude?: number;
     created_at?: string;
     updated_at?: string;
   };
@@ -42,29 +43,6 @@ export default function Customer({ customer, onToggle, onEdit, onPress, showEdit
       onPress={showEdit ? handlePress : undefined}
       activeOpacity={showEdit ? 0.7 : 1}
     >
-      {showEdit ? (
-        // Edit button for customers
-        <TouchableOpacity 
-          style={styles.editButton} 
-          onPress={handleEdit}
-          activeOpacity={0.7}
-        >
-          <FontAwesome name="edit" size={16} color="#007AFF" />
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity 
-          style={styles.checkbox} 
-          onPress={handleToggle}
-          activeOpacity={0.7}
-        >
-          <View style={[styles.checkboxBox, isChecked && styles.checkboxChecked]}>
-            {isChecked && (
-              <Text style={styles.checkmark}>✓</Text>
-            )}
-          </View>
-        </TouchableOpacity>
-      )}
-      
       <View style={styles.content}>
         <Text style={[styles.name, !showEdit && isChecked && styles.nameChecked]}>
           {customer.name}
@@ -85,7 +63,7 @@ export default function Customer({ customer, onToggle, onEdit, onPress, showEdit
       </View>
       
       {showEdit && (
-        <View style={styles.detailsIndicator}>
+        <View>
           <FontAwesome name="chevron-right" size={14} color="#999" />
         </View>
       )}
@@ -100,7 +78,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderRadius: 8,
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -175,10 +153,5 @@ const styles = StyleSheet.create({
   email: {
     fontSize: 14,
     color: '#666',
-  },
-  detailsIndicator: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
   },
 });

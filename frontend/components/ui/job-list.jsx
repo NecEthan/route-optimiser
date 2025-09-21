@@ -39,6 +39,41 @@ export default function JobList({ showEdit = false, onEdit, onJobPress }) {
     };
 
     const handleJobToggle = (jobId, isChecked) => {
+        // Handle job completion toggle
+        console.log(`Job ${jobId} marked as ${isChecked ? 'completed' : 'incomplete'}`);
+    };
+
+    const handleCashToggle = async (jobId, isPaidInCash) => {
+        // Handle cash payment toggle
+        console.log(`Job ${jobId} payment updated: ${isPaidInCash ? 'paid in cash' : 'not paid in cash'}`);
+        
+        try {
+            const token = await AsyncStorage.getItem('access_token');
+            
+            const response = await fetch(`${API_CONFIG.BASE_URL}/api/jobs/${jobId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    paid_in_cash: isPaidInCash
+                }),
+            });
+            
+            if (response.ok) {
+                // Update local state
+                setJobs(prevJobs => prevJobs.map(job => 
+                    job.id === jobId ? { ...job, paid_in_cash: isPaidInCash } : job
+                ));
+                console.log('✅ Cash payment status updated successfully');
+            } else {
+                throw new Error('Failed to update cash payment status');
+            }
+        } catch (error) {
+            console.error('❌ Error updating cash payment status:', error);
+            // Could show an alert here to inform the user
+        }
     };
 
     const handleJobPress = (job) => {
@@ -52,6 +87,7 @@ export default function JobList({ showEdit = false, onEdit, onJobPress }) {
                     <Job 
                         job={job} 
                         onToggle={(isChecked) => handleJobToggle(job.id, isChecked)}
+                        onCashToggle={(isPaidInCash) => handleCashToggle(job.id, isPaidInCash)}
                         onEdit={onEdit}
                         onPress={() => handleJobPress(job)}
                         showEdit={showEdit}

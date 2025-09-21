@@ -13,6 +13,7 @@ type JobProps = {
     last_completed?: string; // date
     estimated_duration?: number; // integer (minutes)
     active?: boolean; // boolean, default true
+    paid_in_cash?: boolean; // boolean, default false
     created_at?: string; // timestamp with time zone
     updated_at?: string; // timestamp with time zone
     customers?: {
@@ -32,19 +33,29 @@ type JobProps = {
     email?: string;
   };
   onToggle?: (isChecked: boolean) => void;
+  onCashToggle?: (jobId: string, isPaidInCash: boolean) => void;
   onEdit?: (jobId: string) => void;
   onPress?: () => void;
   showEdit?: boolean;
 };
 
-export default function Job({ job, onToggle, onEdit, onPress, showEdit = false }: JobProps) {
+export default function Job({ job, onToggle, onCashToggle, onEdit, onPress, showEdit = false }: JobProps) {
   // For jobs, use active status and last_completed to determine if it appears "completed"
   const [isChecked, setIsChecked] = useState(job.completed || !!job.last_completed);
+  const [isPaidInCash, setIsPaidInCash] = useState(job.paid_in_cash || false);
 
   const handleToggle = () => {
     const newCheckedState = !isChecked;
     setIsChecked(newCheckedState);
     onToggle?.(newCheckedState); 
+  };
+
+  const handleCashToggle = () => {
+    const newCashState = !isPaidInCash;
+    setIsPaidInCash(newCashState);
+    if (job.id) {
+      onCashToggle?.(job.id, newCashState);
+    }
   };
 
   const handleEdit = () => {
@@ -80,18 +91,34 @@ export default function Job({ job, onToggle, onEdit, onPress, showEdit = false }
           <FontAwesome name="edit" size={16} color="#007AFF" />
         </TouchableOpacity>
       ) : (
-        // Checkbox for jobs
-        <TouchableOpacity 
-          style={styles.checkbox} 
-          onPress={handleToggle}
-          activeOpacity={0.7}
-        >
-          <View style={[styles.checkboxBox, isChecked && styles.checkboxChecked]}>
-            {isChecked && (
-              <Text style={styles.checkmark}>✓</Text>
-            )}
-          </View>
-        </TouchableOpacity>
+        // Checkboxes for jobs - completion and cash payment
+        <View style={styles.checkboxContainer}>
+          {/* Job completion checkbox */}
+          <TouchableOpacity 
+            style={styles.checkbox} 
+            onPress={handleToggle}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.checkboxBox, isChecked && styles.checkboxChecked]}>
+              {isChecked && (
+                <Text style={styles.checkmark}>✓</Text>
+              )}
+            </View>
+          </TouchableOpacity>
+          
+          {/* Cash payment checkbox */}
+          <TouchableOpacity 
+            style={[styles.checkbox, styles.cashCheckbox]} 
+            onPress={handleCashToggle}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.checkboxBox, styles.cashCheckboxBox, isPaidInCash && styles.cashCheckboxChecked]}>
+              {isPaidInCash && (
+                <FontAwesome name="dollar" size={10} color="#fff" />
+              )}
+            </View>
+          </TouchableOpacity>
+        </View>
       )}
       
       <View style={styles.content}>
@@ -162,6 +189,16 @@ const styles = StyleSheet.create({
     marginRight: 12,
     paddingTop: 2, // Align with text
   },
+  checkboxContainer: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    marginRight: 12,
+    paddingTop: 2,
+  },
+  cashCheckbox: {
+    marginTop: 8,
+    marginRight: 0,
+  },
   checkboxBox: {
     width: 20,
     height: 20,
@@ -175,6 +212,13 @@ const styles = StyleSheet.create({
   checkboxChecked: {
     backgroundColor: '#007AFF',
     borderColor: '#007AFF',
+  },
+  cashCheckboxBox: {
+    borderColor: '#4CAF50',
+  },
+  cashCheckboxChecked: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
   },
   checkmark: {
     color: 'white',

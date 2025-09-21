@@ -62,6 +62,8 @@ export default function JobDetailsModal({
 }: JobDetailsModalProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showCompletionPrompt, setShowCompletionPrompt] = useState(false);
+  const [completionNotes, setCompletionNotes] = useState('');
   const [editFormData, setEditFormData] = useState({
     description: '',
     price: '',
@@ -247,20 +249,18 @@ export default function JobDetailsModal({
     }
 
     // Show completion confirmation with notes option
-    Alert.prompt(
-      'Mark Job Complete',
-      'Are you sure you want to mark this job as complete? You can add optional notes below.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Mark Complete',
-          onPress: (notes: string | undefined) => performJobCompletion(notes),
-        },
-      ],
-      'plain-text',
-      '',
-      'default'
-    );
+    setCompletionNotes('');
+    setShowCompletionPrompt(true);
+  };
+
+  const handleCompletionConfirm = () => {
+    setShowCompletionPrompt(false);
+    performJobCompletion(completionNotes);
+  };
+
+  const handleCompletionCancel = () => {
+    setShowCompletionPrompt(false);
+    setCompletionNotes('');
   };
 
   const performJobCompletion = async (notes?: string) => {
@@ -333,12 +333,13 @@ export default function JobDetailsModal({
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
+    <>
+      <Modal
+        visible={visible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={onClose}
+      >
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
@@ -579,6 +580,50 @@ export default function JobDetailsModal({
         </View>
       </View>
     </Modal>
+
+    {/* Completion Prompt Modal */}
+    <Modal
+      visible={showCompletionPrompt}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={handleCompletionCancel}
+    >
+      <View style={styles.promptOverlay}>
+        <View style={styles.promptContainer}>
+          <Text style={styles.promptTitle}>Mark Job Complete</Text>
+          <Text style={styles.promptMessage}>
+            Are you sure you want to mark this job as complete? You can add optional notes below.
+          </Text>
+          
+          <TextInput
+            style={styles.promptInput}
+            placeholder="Optional notes..."
+            value={completionNotes}
+            onChangeText={setCompletionNotes}
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
+          />
+          
+          <View style={styles.promptButtons}>
+            <TouchableOpacity
+              style={[styles.promptButton, styles.promptCancelButton]}
+              onPress={handleCompletionCancel}
+            >
+              <Text style={styles.promptCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.promptButton, styles.promptConfirmButton]}
+              onPress={handleCompletionConfirm}
+            >
+              <Text style={styles.promptConfirmText}>Mark Complete</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+    </>
   );
 }
 
@@ -765,5 +810,78 @@ const styles = StyleSheet.create({
   },
   footerButton: {
     marginBottom: 0,
+  },
+  // Prompt modal styles
+  promptOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  promptContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginHorizontal: 20,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  promptTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  promptMessage: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  promptInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 20,
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  promptButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  promptButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  promptCancelButton: {
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  promptConfirmButton: {
+    backgroundColor: '#007AFF',
+  },
+  promptCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  promptConfirmText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });
