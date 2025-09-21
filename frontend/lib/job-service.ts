@@ -3,28 +3,45 @@ import { authService } from './auth-service';
 
 // Types
 export interface Job {
-  id?: string | number;
-  name: string;
-  address: string;
+  id: string; // UUID
+  customer_id?: string; // UUID foreign key
+  user_id?: string; // UUID foreign key
+  description: string; // text not null
+  price: number; // numeric(10,2) not null
+  frequency?: string; // character varying(50), default 'monthly'
+  last_completed?: string; // date
+  estimated_duration?: number | null; // integer (minutes)
+  active?: boolean; // boolean, default true
+  created_at?: string; // timestamp with time zone
+  updated_at?: string; // timestamp with time zone
+  // Customer information from join
+  customers?: {
+    id: string;
+    name: string;
+    email?: string;
+    phone?: string;
+    address: string;
+  };
+  // Legacy fields for backward compatibility
+  name?: string;
+  address?: string;
   phone?: string;
   email?: string;
   service_frequency?: string;
   notes?: string;
   completed?: boolean;
   completed_at?: string;
-  created_at?: string;
-  updated_at?: string;
 }
 
 export interface JobCompletionRequest {
-  job_id: string | number;
+  job_id: string; // UUID
   completed_at?: string;
   notes?: string;
 }
 
 class JobService {
   // Mark job as complete
-  async markJobComplete(jobId: string | number, notes?: string): Promise<Job> {
+  async markJobComplete(jobId: string, notes?: string): Promise<Job> {
     try {
       const headers = await authService.getAuthHeaders();
       const completedAt = new Date().toISOString();
@@ -55,7 +72,7 @@ class JobService {
   }
 
   // Mark job as incomplete (undo completion)
-  async markJobIncomplete(jobId: string | number): Promise<Job> {
+  async markJobIncomplete(jobId: string): Promise<Job> {
     try {
       const headers = await authService.getAuthHeaders();
       
@@ -81,7 +98,7 @@ class JobService {
   }
 
   // Get job completion history
-  async getJobCompletionHistory(jobId: string | number): Promise<any[]> {
+  async getJobCompletionHistory(jobId: string): Promise<any[]> {
     try {
       const headers = await authService.getAuthHeaders();
       

@@ -2,18 +2,32 @@ import React, { useState } from "react";
 import { StyleSheet, Text, View, SafeAreaView, Alert, ScrollView } from "react-native";
 import JobList from "@/components/ui/job-list";
 import JobDetailsModal, { Job } from "@/components/ui/job-details-modal";
+import AddJobModal from "@/components/ui/add-job-modal";
 import Button from "@/components/ui/button";
 
 export default function TodayScreen() {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [showJobDetails, setShowJobDetails] = useState(false);
+  const [showAddJobModal, setShowAddJobModal] = useState(false);
+  const [jobListKey, setJobListKey] = useState(0); // Force re-render of job list
+  const [hasJobUpdates, setHasJobUpdates] = useState(false); // Track if we need to refresh
 
   const handleRefresh = () => {
     Alert.alert("Refresh", "Refreshing job list...");
   };
 
   const handleAddJob = () => {
-    Alert.alert("Add Job", "Adding new job...");
+    console.log('➕ Opening add job modal');
+    setShowAddJobModal(true);
+  };
+
+  const handleJobAdded = () => {
+    console.log('✅ Job added successfully, refreshing job list');
+    setJobListKey(prev => prev + 1); // Force refresh of job list
+  };
+
+  const handleCloseAddJobModal = () => {
+    setShowAddJobModal(false);
   };
 
   const handleOptimiseRoute = () => {
@@ -36,14 +50,25 @@ export default function TodayScreen() {
   };
 
   const handleJobUpdated = (updatedJob: Job) => {
-    console.log('🔄 Job updated:', updatedJob.name, 'Completed:', updatedJob.completed);
-    // You can add logic here to refresh the job list or update local state
-    // For now, we'll just log it
-  };
-
-  const handleCloseJobDetails = () => {
+    console.log('🔄 Job updated:', updatedJob.description, 'Last completed:', updatedJob.last_completed);
+    
+    // Update the selected job with the new data from server
+    setSelectedJob(updatedJob);
+    
+    // Mark that we have job updates that need to be reflected in the list
+    setHasJobUpdates(true);
+    
+    console.log('✅ Selected job state updated with server response');
+  };  const handleCloseJobDetails = () => {
     setShowJobDetails(false);
     setSelectedJob(null);
+    
+    // If there were job updates, refresh the job list
+    if (hasJobUpdates) {
+      console.log('🔄 Refreshing job list due to updates...');
+      setJobListKey(prev => prev + 1); // Force JobList to re-render and fetch fresh data
+      setHasJobUpdates(false); // Reset the flag
+    }
   };
 
 
@@ -75,6 +100,7 @@ export default function TodayScreen() {
         showsVerticalScrollIndicator={true}
       >
         <JobList 
+          key={jobListKey} // Force re-render when key changes
           showEdit={false} 
           onEdit={() => {}} 
           onJobPress={handleJobPress}
@@ -98,6 +124,13 @@ export default function TodayScreen() {
         onClose={handleCloseJobDetails}
         onEdit={handleEditJob}
         onJobUpdated={handleJobUpdated}
+      />
+
+      {/* Add Job Modal */}
+      <AddJobModal
+        visible={showAddJobModal}
+        onClose={handleCloseAddJobModal}
+        onJobAdded={handleJobAdded}
       />
     </SafeAreaView>
   );

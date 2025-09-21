@@ -8,44 +8,46 @@ export default function JobList({ showEdit = false, onEdit, onJobPress }) {
     const [jobs, setJobs] = useState([]);
 
     useEffect(() => {
-        fetchCustomers();
+        fetchJobs();
     }, []);
 
-    const fetchCustomers = async () => {
+    const fetchJobs = async () => {
         try {
             const token = await AsyncStorage.getItem('access_token');
             
-            const response = await fetch(API_CONFIG.BASE_URL + '/api/customers', {
+            const response = await fetch(API_CONFIG.BASE_URL + '/api/jobs', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
             });
-            const data = await response.json();
-            console.log("Got customers:", data);
             
-            const customers = Array.isArray(data) ? data : data.data || [];
-            setJobs(customers);
+            const data = await response.json();
+            
+            const jobsData = data.success && Array.isArray(data.jobs) 
+                ? data.jobs 
+                : data.success && Array.isArray(data.data) 
+                ? data.data 
+                : [];
+            setJobs(jobsData);
 
         } catch (error) {
-            console.error("Error:", error);
-            setJobs([]);
+            console.error("❌ Error fetching jobs:", error);
+            setJobs([]); 
         }
     };
 
     const handleJobToggle = (jobId, isChecked) => {
-        console.log(`Job ${jobId} ${isChecked ? 'completed' : 'unchecked'}`);
     };
 
     const handleJobPress = (job) => {
-        console.log('🎯 Job pressed:', job.name);
         onJobPress?.(job);
     };
 
     return (
         <View style={styles.container}>
-            {jobs.map((job) => (
+            {Array.isArray(jobs) && jobs.map((job) => (
                 <View key={job.id} style={styles.jobWrapper}>
                     <Job 
                         job={job} 
@@ -62,7 +64,6 @@ export default function JobList({ showEdit = false, onEdit, onJobPress }) {
 
 const styles = StyleSheet.create({
     container: {
-        // Don't use ScrollView or flex: 1 here
     },
     jobWrapper: {
         marginBottom: 12,

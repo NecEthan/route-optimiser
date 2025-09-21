@@ -4,20 +4,42 @@ import { FontAwesome } from '@expo/vector-icons';
 
 type JobProps = {
   job: {
-    id?: string | number;
-    name: string;
-    address: string;
+    id: string; // uuid from database
+    customer_id?: string; // uuid foreign key
+    user_id?: string; // uuid foreign key
+    description: string; // text not null
+    price: number; // numeric(10, 2) not null
+    frequency?: string; // character varying(50), default 'monthly'
+    last_completed?: string; // date
+    estimated_duration?: number; // integer (minutes)
+    active?: boolean; // boolean, default true
+    created_at?: string; // timestamp with time zone
+    updated_at?: string; // timestamp with time zone
+    customers?: {
+      id: string;
+      name: string;
+      email?: string;
+      phone?: string;
+      address: string;
+    };
+    // Legacy support for backward compatibility
+    title?: string;
+    service_type?: string;
+    completed?: boolean;
+    name?: string;
+    address?: string;
     phone?: string;
     email?: string;
   };
   onToggle?: (isChecked: boolean) => void;
-  onEdit?: (jobId: string | number) => void;
-  onPress?: () => void; // New prop for handling job press
-  showEdit?: boolean; // Flag to show edit button instead of checkbox
+  onEdit?: (jobId: string) => void;
+  onPress?: () => void;
+  showEdit?: boolean;
 };
 
 export default function Job({ job, onToggle, onEdit, onPress, showEdit = false }: JobProps) {
-  const [isChecked, setIsChecked] = useState(false);
+  // For jobs, use active status and last_completed to determine if it appears "completed"
+  const [isChecked, setIsChecked] = useState(job.completed || !!job.last_completed);
 
   const handleToggle = () => {
     const newCheckedState = !isChecked;
@@ -26,12 +48,25 @@ export default function Job({ job, onToggle, onEdit, onPress, showEdit = false }
   };
 
   const handleEdit = () => {
-    onEdit?.(job.id || job.name);
+    if (job.id) {
+      onEdit?.(job.id);
+    }
   };
 
   const handlePress = () => {
     onPress?.();
   };
+
+  // Get display values based on actual schema
+  const displayTitle = job.title || job.description || 'Untitled Job';
+  const displayAddress = job.customers?.address || job.address || 'No address';
+  const displayPhone = job.customers?.phone || job.phone;
+  const displayEmail = job.customers?.email || job.email;
+  const customerName = job.customers?.name;
+  const jobPrice = job.price;
+  const jobFrequency = job.frequency;
+  const estimatedDuration = job.estimated_duration;
+  const lastCompleted = job.last_completed;
 
   return (
     <TouchableOpacity style={styles.container} onPress={handlePress} activeOpacity={0.7}>
@@ -61,19 +96,44 @@ export default function Job({ job, onToggle, onEdit, onPress, showEdit = false }
       
       <View style={styles.content}>
         <Text style={[styles.name, !showEdit && isChecked && styles.nameChecked]}>
-          {job.name}
+          {displayTitle}
         </Text>
-        <Text style={[styles.address, !showEdit && isChecked && styles.addressChecked]}>
-          {job.address}
-        </Text>
-        {job.phone && (
-          <Text style={[styles.phone, !showEdit && isChecked && styles.addressChecked]}>
-            📞 {job.phone}
+        {customerName && (
+          <Text style={[styles.customerName, !showEdit && isChecked && styles.addressChecked]}>
+            👤 {customerName}
           </Text>
         )}
-        {job.email && (
+        <Text style={[styles.address, !showEdit && isChecked && styles.addressChecked]}>
+          📍 {displayAddress}
+        </Text>
+        {jobPrice && (
+          <Text style={[styles.price, !showEdit && isChecked && styles.addressChecked]}>
+            � ${jobPrice}
+          </Text>
+        )}
+        {jobFrequency && (
+          <Text style={[styles.frequency, !showEdit && isChecked && styles.addressChecked]}>
+            🔄 {jobFrequency}
+          </Text>
+        )}
+        {estimatedDuration && (
+          <Text style={[styles.duration, !showEdit && isChecked && styles.addressChecked]}>
+            ⏱️ {estimatedDuration} min
+          </Text>
+        )}
+        {lastCompleted && (
+          <Text style={[styles.lastCompleted, !showEdit && isChecked && styles.addressChecked]}>
+            ✅ Last: {new Date(lastCompleted).toLocaleDateString()}
+          </Text>
+        )}
+        {displayPhone && (
+          <Text style={[styles.phone, !showEdit && isChecked && styles.addressChecked]}>
+            📞 {displayPhone}
+          </Text>
+        )}
+        {displayEmail && (
           <Text style={[styles.email, !showEdit && isChecked && styles.addressChecked]}>
-            ✉️ {job.email}
+            ✉️ {displayEmail}
           </Text>
         )}
       </View>
@@ -163,5 +223,37 @@ const styles = StyleSheet.create({
   email: {
     fontSize: 14,
     color: '#666',
+  },
+  customerName: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 2,
+    fontWeight: '500',
+  },
+  serviceType: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 2,
+  },
+  price: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '600',
+  },
+  frequency: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 2,
+  },
+  duration: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 2,
+  },
+  lastCompleted: {
+    fontSize: 14,
+    color: '#4CAF50',
+    marginBottom: 2,
+    fontWeight: '500',
   },
 });

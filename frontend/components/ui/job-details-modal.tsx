@@ -10,21 +10,39 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Button from './button';
-import { jobService } from '@/lib';
+import { jobService, API_CONFIG } from '@/lib';
 
 export interface Job {
-  id?: string | number;
-  name: string;
-  address: string;
+  id: string; // UUID
+  customer_id?: string; // UUID foreign key
+  user_id?: string; // UUID foreign key
+  description: string; // text not null
+  price: number; // numeric(10,2) not null
+  frequency?: string; // character varying(50), default 'monthly'
+  last_completed?: string; // date
+  estimated_duration?: number | null; // integer (minutes)
+  active?: boolean; // boolean, default true
+  created_at?: string; // timestamp with time zone
+  updated_at?: string; // timestamp with time zone
+  // Customer information from join
+  customers?: {
+    id: string;
+    name: string;
+    email?: string;
+    phone?: string;
+    address: string;
+  };
+  // Legacy fields for backward compatibility
+  name?: string;
+  address?: string;
   phone?: string;
   email?: string;
   service_frequency?: string;
   notes?: string;
   completed?: boolean;
   completed_at?: string;
-  created_at?: string;
-  updated_at?: string;
 }
 
 interface JobDetailsModalProps {
@@ -45,24 +63,20 @@ export default function JobDetailsModal({
   const [isUpdating, setIsUpdating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editFormData, setEditFormData] = useState({
-    name: '',
-    address: '',
-    phone: '',
-    email: '',
-    service_frequency: '',
-    notes: '',
+    description: '',
+    price: '',
+    frequency: '',
+    estimated_duration: '',
   });
 
   // Update form data when job changes or modal opens
   useEffect(() => {
     if (job) {
       setEditFormData({
-        name: job.name || '',
-        address: job.address || '',
-        phone: job.phone || '',
-        email: job.email || '',
-        service_frequency: job.service_frequency || '',
-        notes: job.notes || '',
+        description: job.description || '',
+        price: job.price?.toString() || '',
+        frequency: job.frequency || 'monthly',
+        estimated_duration: job.estimated_duration?.toString() || '',
       });
     }
   }, [job]);
@@ -131,27 +145,64 @@ export default function JobDetailsModal({
     try {
       console.log('💾 Saving job changes:', editFormData);
       
-      // TODO: Call API to update job
-      // For now, just show success and exit edit mode
+      // Get auth headers
+      const token = await AsyncStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+      
+      // Convert form data to proper types
+      const updateData = {
+        id: job.id,
+        customer_id: job.customer_id,
+        user_id: job.user_id,
+        description: editFormData.description,
+        price: parseFloat(editFormData.price) || 0,
+        frequency: editFormData.frequency,
+        last_completed: job.last_completed,
+        estimated_duration: editFormData.estimated_duration ? parseInt(editFormData.estimated_duration) : null,
+        active: job.active !== undefined ? job.active : true,
+        created_at: job.created_at,
+        updated_at: new Date().toISOString()
+      };
+
+      // Call the PUT /api/jobs/:id endpoint
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/jobs/${job.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(updateData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Job updated successfully:', data);
+      
       Alert.alert(
         'Success!',
-        `Job "${editFormData.name}" has been updated.`,
+        `Job "${editFormData.description}" has been updated.`,
         [{ text: 'OK' }]
       );
 
       // Update the job in parent component if callback provided
-      if (onJobUpdated) {
-        const updatedJob = { ...job, ...editFormData };
-        onJobUpdated(updatedJob);
+      if (onJobUpdated && data.success && data.job) {
+        onJobUpdated(data.job);
       }
 
       setIsEditing(false);
 
     } catch (error) {
       console.error('❌ Failed to save job:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       Alert.alert(
         'Error',
-        'Failed to save changes. Please try again.',
+        `Failed to save changes: ${errorMessage}`,
         [{ text: 'OK' }]
       );
     } finally {
@@ -163,12 +214,10 @@ export default function JobDetailsModal({
     // Reset form data to original values
     if (job) {
       setEditFormData({
-        name: job.name || '',
-        address: job.address || '',
-        phone: job.phone || '',
-        email: job.email || '',
-        service_frequency: job.service_frequency || '',
-        notes: job.notes || '',
+        description: job.description || '',
+        price: job.price?.toString() || '',
+        frequency: job.frequency || 'monthly',
+        estimated_duration: job.estimated_duration?.toString() || '',
       });
     }
     setIsEditing(false);
@@ -180,7 +229,7 @@ export default function JobDetailsModal({
       return;
     }
 
-    if (job.completed) {
+    if (job.last_completed) {
       // Job is already completed, ask if they want to mark as incomplete
       Alert.alert(
         'Job Already Complete',
@@ -225,7 +274,7 @@ export default function JobDetailsModal({
       
       Alert.alert(
         'Success!',
-        `Job "${job.name}" has been marked as complete.`,
+        `Job "${job.description}" has been marked as complete.`,
         [{ text: 'OK' }]
       );
 
@@ -262,7 +311,7 @@ export default function JobDetailsModal({
       
       Alert.alert(
         'Success!',
-        `Job "${job.name}" has been marked as incomplete.`,
+        `Job "${job.description}" has been marked as incomplete.`,
         [{ text: 'OK' }]
       );
 
@@ -317,65 +366,119 @@ export default function JobDetailsModal({
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Customer Information */}
+          {/* Job Information */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Customer Information</Text>
+            <Text style={styles.sectionTitle}>Job Information</Text>
             
             {renderField(
-              "person", 
-              "Customer Name", 
-              job.name, 
-              "name", 
-              "Enter customer name"
+              "document-text", 
+              "Description", 
+              job.description, 
+              "description", 
+              "Enter job description",
+              true
             )}
 
             {renderField(
-              "location", 
-              "Address", 
-              job.address, 
-              "address", 
-              "Enter address"
+              "cash", 
+              "Price", 
+              `$${job.price}`, 
+              "price", 
+              "Enter price"
             )}
 
-            {(job.phone || isEditing) && renderField(
-              "call", 
-              "Phone", 
-              job.phone || '', 
-              "phone", 
-              "Enter phone number"
-            )}
-
-            {(job.email || isEditing) && renderField(
-              "mail", 
-              "Email", 
-              job.email || '', 
-              "email", 
-              "Enter email address"
-            )}
-          </View>
-
-          {/* Service Information */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Service Information</Text>
-
-            {(job.service_frequency || isEditing) && renderField(
+            {renderField(
               "calendar", 
-              "Service Frequency", 
-              job.service_frequency ? 
-                job.service_frequency.charAt(0).toUpperCase() + job.service_frequency.slice(1) : '', 
-              "service_frequency", 
-              "Enter service frequency"
+              "Frequency", 
+              job.frequency || 'monthly', 
+              "frequency", 
+              "Enter frequency (weekly, monthly, etc.)"
             )}
 
-            {(job.notes || isEditing) && renderField(
-              "document-text", 
-              "Notes", 
-              job.notes || '', 
-              "notes", 
-              "Enter notes or special instructions",
-              true
+            {(job.estimated_duration || isEditing) && renderField(
+              "time", 
+              "Estimated Duration (minutes)", 
+              job.estimated_duration?.toString() || '', 
+              "estimated_duration", 
+              "Enter duration in minutes"
             )}
+
+            {/* Active Status */}
+            <View style={styles.infoRow}>
+              <View style={styles.iconContainer}>
+                <Ionicons 
+                  name={job.active ? "checkmark-circle" : "close-circle"} 
+                  size={20} 
+                  color={job.active ? "#2E7D32" : "#F44336"} 
+                />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.label}>Active Status</Text>
+                <View style={[
+                  styles.statusBadge, 
+                  job.active ? styles.activeBadge : styles.inactiveBadge
+                ]}>
+                  <Text style={[
+                    styles.statusText,
+                    job.active ? styles.activeText : styles.inactiveText
+                  ]}>
+                    {job.active ? 'Active' : 'Inactive'}
+                  </Text>
+                </View>
+              </View>
+            </View>
           </View>
+
+          {/* Customer Information */}
+          {job.customers && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Customer Information</Text>
+              
+              <View style={styles.infoRow}>
+                <View style={styles.iconContainer}>
+                  <Ionicons name="person" size={20} color="#007AFF" />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.label}>Customer Name</Text>
+                  <Text style={styles.value}>{job.customers.name}</Text>
+                </View>
+              </View>
+
+              <View style={styles.infoRow}>
+                <View style={styles.iconContainer}>
+                  <Ionicons name="location" size={20} color="#007AFF" />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.label}>Address</Text>
+                  <Text style={styles.value}>{job.customers.address}</Text>
+                </View>
+              </View>
+
+              {job.customers.phone && (
+                <View style={styles.infoRow}>
+                  <View style={styles.iconContainer}>
+                    <Ionicons name="call" size={20} color="#007AFF" />
+                  </View>
+                  <View style={styles.infoContent}>
+                    <Text style={styles.label}>Phone</Text>
+                    <Text style={styles.value}>{job.customers.phone}</Text>
+                  </View>
+                </View>
+              )}
+
+              {job.customers.email && (
+                <View style={styles.infoRow}>
+                  <View style={styles.iconContainer}>
+                    <Ionicons name="mail" size={20} color="#007AFF" />
+                  </View>
+                  <View style={styles.infoContent}>
+                    <Text style={styles.label}>Email</Text>
+                    <Text style={styles.value}>{job.customers.email}</Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Completion Status */}
           <View style={styles.section}>
@@ -384,35 +487,35 @@ export default function JobDetailsModal({
             <View style={styles.infoRow}>
               <View style={styles.iconContainer}>
                 <Ionicons 
-                  name={job.completed ? "checkmark-circle" : "time"} 
+                  name={job.last_completed ? "checkmark-circle" : "time"} 
                   size={20} 
-                  color={job.completed ? "#2E7D32" : "#FF9800"} 
+                  color={job.last_completed ? "#2E7D32" : "#FF9800"} 
                 />
               </View>
               <View style={styles.infoContent}>
                 <Text style={styles.label}>Status</Text>
                 <View style={[
                   styles.statusBadge, 
-                  job.completed ? styles.completedBadge : styles.pendingBadge
+                  job.last_completed ? styles.completedBadge : styles.pendingBadge
                 ]}>
                   <Text style={[
                     styles.statusText,
-                    job.completed ? styles.completedText : styles.pendingText
+                    job.last_completed ? styles.completedText : styles.pendingText
                   ]}>
-                    {job.completed ? 'Completed' : 'Pending'}
+                    {job.last_completed ? 'Completed' : 'Pending'}
                   </Text>
                 </View>
               </View>
             </View>
 
-            {job.completed && job.completed_at && (
+            {job.last_completed && (
               <View style={styles.infoRow}>
                 <View style={styles.iconContainer}>
                   <Ionicons name="calendar-outline" size={20} color="#007AFF" />
                 </View>
                 <View style={styles.infoContent}>
-                  <Text style={styles.label}>Completed At</Text>
-                  <Text style={styles.value}>{formatDate(job.completed_at)}</Text>
+                  <Text style={styles.label}>Last Completed</Text>
+                  <Text style={styles.value}>{formatDate(job.last_completed)}</Text>
                 </View>
               </View>
             )}
@@ -447,6 +550,8 @@ export default function JobDetailsModal({
           {job.id && (
             <View style={styles.debugSection}>
               <Text style={styles.debugText}>Job ID: {job.id}</Text>
+              {job.customer_id && <Text style={styles.debugText}>Customer ID: {job.customer_id}</Text>}
+              {job.user_id && <Text style={styles.debugText}>User ID: {job.user_id}</Text>}
             </View>
           )}
         </ScrollView>
@@ -463,9 +568,9 @@ export default function JobDetailsModal({
             />
           ) : (
             <Button
-              title={job.completed ? "Mark as Incomplete" : "Mark as Complete"}
+              title={job.last_completed ? "Mark as Incomplete" : "Mark as Complete"}
               onPress={handleMarkComplete}
-              variant={job.completed ? "outline" : "primary"}
+              variant={job.last_completed ? "outline" : "primary"}
               size="large"
               style={Object.assign({}, styles.footerButton, { opacity: isUpdating ? 0.6 : 1 })}
               disabled={isUpdating}
@@ -623,6 +728,18 @@ const styles = StyleSheet.create({
   },
   pendingText: {
     color: '#F57C00',
+  },
+  activeBadge: {
+    backgroundColor: '#E8F5E8',
+  },
+  inactiveBadge: {
+    backgroundColor: '#FFEBEE',
+  },
+  activeText: {
+    color: '#2E7D32',
+  },
+  inactiveText: {
+    color: '#F44336',
   },
   debugSection: {
     backgroundColor: '#f9f9f9',
