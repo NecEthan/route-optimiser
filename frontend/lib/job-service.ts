@@ -40,20 +40,16 @@ export interface JobCompletionRequest {
 }
 
 class JobService {
-  // Mark job as complete
-  async markJobComplete(jobId: string, notes?: string): Promise<Job> {
+  async markJobComplete(jobId: string): Promise<Job> {
     try {
       const headers = await authService.getAuthHeaders();
-      const completedAt = new Date().toISOString();
-      
-      console.log('🎯 JobService: Marking job as complete:', jobId);
       
       const response = await fetch(`${API_CONFIG.BASE_URL}/api/jobs/${jobId}/complete`, {
-        method: 'POST',
+        method: 'PATCH',
         headers,
         body: JSON.stringify({
-          completed_at: completedAt,
-          notes: notes
+            status: false,
+            last_completed: new Date().toISOString(),
         })
       });
 
@@ -62,16 +58,13 @@ class JobService {
       }
 
       const data = await response.json();
-      console.log('✅ JobService: Job marked as complete successfully');
       
       return data.job;
     } catch (error) {
-      console.error('❌ JobService: Mark job complete error:', error);
       throw error;
     }
   }
 
-  // Mark job as incomplete (undo completion)
   async markJobIncomplete(jobId: string): Promise<Job> {
     try {
       const headers = await authService.getAuthHeaders();
@@ -88,7 +81,6 @@ class JobService {
       }
 
       const data = await response.json();
-      console.log('✅ JobService: Job marked as incomplete successfully');
       
       return data.job;
     } catch (error) {

@@ -248,7 +248,6 @@ export default function JobDetailsModal({
       return;
     }
 
-    // Show completion confirmation with notes option
     setCompletionNotes('');
     setShowCompletionPrompt(true);
   };
@@ -268,28 +267,17 @@ export default function JobDetailsModal({
 
     setIsUpdating(true);
     try {
-      console.log('🎯 Marking job as complete:', job.id, notes);
+      const updatedJob = await jobService.markJobComplete(job.id);
       
-      const updatedJob = await jobService.markJobComplete(job.id, notes);
-      
-      Alert.alert(
-        'Success!',
-        `Job "${job.description}" has been marked as complete.`,
-        [{ text: 'OK' }]
-      );
-
-      // Update the job in parent component if callback provided
       if (onJobUpdated) {
         onJobUpdated(updatedJob);
       }
 
-      // Close the modal after successful completion
       setTimeout(() => {
         onClose();
       }, 1000);
 
     } catch (error) {
-      console.error('❌ Failed to mark job complete:', error);
       Alert.alert(
         'Error',
         'Failed to mark job as complete. Please try again.',
@@ -481,46 +469,6 @@ export default function JobDetailsModal({
             </View>
           )}
 
-          {/* Completion Status */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Completion Status</Text>
-            
-            <View style={styles.infoRow}>
-              <View style={styles.iconContainer}>
-                <Ionicons 
-                  name={job.last_completed ? "checkmark-circle" : "time"} 
-                  size={20} 
-                  color={job.last_completed ? "#2E7D32" : "#FF9800"} 
-                />
-              </View>
-              <View style={styles.infoContent}>
-                <Text style={styles.label}>Status</Text>
-                <View style={[
-                  styles.statusBadge, 
-                  job.last_completed ? styles.completedBadge : styles.pendingBadge
-                ]}>
-                  <Text style={[
-                    styles.statusText,
-                    job.last_completed ? styles.completedText : styles.pendingText
-                  ]}>
-                    {job.last_completed ? 'Completed' : 'Pending'}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {job.last_completed && (
-              <View style={styles.infoRow}>
-                <View style={styles.iconContainer}>
-                  <Ionicons name="calendar-outline" size={20} color="#007AFF" />
-                </View>
-                <View style={styles.infoContent}>
-                  <Text style={styles.label}>Last Completed</Text>
-                  <Text style={styles.value}>{formatDate(job.last_completed)}</Text>
-                </View>
-              </View>
-            )}
-          </View>
 
           {/* Timeline Information */}
           <View style={styles.section}>
@@ -569,7 +517,7 @@ export default function JobDetailsModal({
             />
           ) : (
             <Button
-              title={job.last_completed ? "Mark as Incomplete" : "Mark as Complete"}
+              title={"Mark as Complete"}
               onPress={handleMarkComplete}
               variant={job.last_completed ? "outline" : "primary"}
               size="large"

@@ -27,6 +27,7 @@ export interface Job {
   active?: boolean; // boolean, default true
   created_at?: string; // timestamp with time zone
   updated_at?: string; // timestamp with time zone
+  payment_status: string; // text not null - 'pending', 'paid', 'overdue', etc.
   // Customer information from join
   customers?: {
     id: string;
@@ -71,7 +72,6 @@ export default function AddJobModal({ visible, onClose, onJobAdded }: AddJobModa
   useEffect(() => {
     if (visible) {
       fetchCustomers();
-      // Reset form when modal opens
       setFormData({
         customer_id: '',
         customerName: '',
@@ -143,16 +143,18 @@ export default function AddJobModal({ visible, onClose, onJobAdded }: AddJobModa
     try {
       const headers = await authService.getAuthHeaders();
       
-      // Don't send user_id - backend will use authenticated user
       const jobData = {
         customer_id: formData.customer_id,
         description: formData.description.trim(),
         price: parseFloat(formData.price),
         frequency: formData.frequency,
         estimated_duration: parseInt(formData.estimated_duration) || null,
+        payment_status: 'pending',
+        active: true,
+        // user_id will be set by the backend from the authenticated user
+        // id, created_at, updated_at will be set by the database
+        // last_completed defaults to null for new jobs
       };
-
-      console.log('Creating job with data:', jobData);
 
       const response = await fetch(buildUrl('/api/jobs'), {
         method: 'POST',

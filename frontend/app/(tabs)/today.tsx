@@ -17,7 +17,6 @@ export default function TodayScreen() {
   };
 
   const handleAddJob = () => {
-    console.log('➕ Opening add job modal');
     setShowAddJobModal(true);
   };
 
