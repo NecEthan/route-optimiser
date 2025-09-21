@@ -12,46 +12,15 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Button from './button';
-import { jobService, API_CONFIG } from '@/lib';
+import { customerService, API_CONFIG, Customer } from '@/lib';
 import { accountingService } from '@/lib/accounting-service';
 
-export interface Job {
-  id: string; // UUID
-  customer_id?: string; // UUID foreign key
-  user_id?: string; // UUID foreign key
-  description: string; // text not null
-  price: number; // numeric(10,2) not null
-  frequency?: string; // character varying(50), default 'monthly'
-  last_completed?: string; // date
-  estimated_duration?: number | null; // integer (minutes)
-  active?: boolean; // boolean, default true
-  created_at?: string; // timestamp with time zone
-  updated_at?: string; // timestamp with time zone
-  // Customer information from join
-  customers?: {
-    id: string;
-    name: string;
-    email?: string;
-    phone?: string;
-    address: string;
-  };
-  // Legacy fields for backward compatibility
-  name?: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  service_frequency?: string;
-  notes?: string;
-  completed?: boolean;
-  completed_at?: string;
-}
-
-interface JobDetailsModalProps {
+interface CustomerDetailsModalProps {
   visible: boolean;
-  job: Job | null;
+  job: Customer | null; // Still called 'job' for backward compatibility with existing code
   onClose: () => void;
-  onEdit?: (job: Job) => void;
-  onJobUpdated?: (updatedJob: Job) => void; // New callback for when job is updated
+  onEdit?: (customer: Customer) => void;
+  onJobUpdated?: (updatedCustomer: Customer) => void; // Callback for when customer is updated
 }
 
 export default function JobDetailsModal({
@@ -60,7 +29,7 @@ export default function JobDetailsModal({
   onClose,
   onEdit,
   onJobUpdated,
-}: JobDetailsModalProps) {
+}: CustomerDetailsModalProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showCompletionPrompt, setShowCompletionPrompt] = useState(false);
@@ -249,27 +218,25 @@ export default function JobDetailsModal({
 
     setIsUpdating(true);
     try {
-      // Mark job as complete
-      const updatedJob = await jobService.markJobComplete(job.id);
-      console.log('✅ Job marked as complete:', job);
+      const updatedCustomer = await customerService.markServiceComplete(job.id);
+      console.log('✅ Customer service marked as complete:', job);
         const test = await accountingService.addPayment({
           job_id: job.id,
-          customer_id: job.customer_id || job.customers?.id || '',
+          customer_id: job.customer_id || job.id || '',
           amount: job.price,
           method: 'cash',
-          notes: `Payment for: ${job.description}`
+          notes: `Payment for: ${job.description || job.name}`
         });
-        console.log('✅ Payment added successfullyyyyyyyyyyyyyyyyy', test);
       
       
       // Update parent component
       if (onJobUpdated) {
-        onJobUpdated(updatedJob);
+        onJobUpdated(updatedCustomer);
       }
 
     } catch (error) {
-      console.error('❌ Failed to mark job complete:', error);
-      // Continue and close modal even if job completion failed
+      console.error('❌ Failed to mark customer service complete:', error);
+      // Continue and close modal even if completion failed
     } finally {
       setIsUpdating(false);
       // Always close modal regardless of success or failure

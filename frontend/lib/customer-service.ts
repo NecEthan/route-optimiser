@@ -4,23 +4,51 @@ import { authService } from './auth-service';
 // Types
 export interface Customer {
   id: string;
+  user_id?: string; // UUID foreign key
   name: string;
-  address: string;
-  phone?: string;
   email?: string;
-  service_frequency?: string;
-  notes?: string;
+  phone?: string;
+  description: string; // Service description - NOT NULL
+  address: string; // NOT NULL
+  price: number; // DECIMAL(10,2) NOT NULL
+  frequency?: string;
+  estimated_duration?: number; // INTEGER (minutes)
   created_at?: string;
-  updated_at?: string;
+  last_completed?: string; // DATE
+  payment_status?: boolean; // BOOLEAN
+  exterior_windows?: boolean;
+  interior_windows?: boolean;
+  gutters?: boolean;
+  soffits?: boolean;
+  fascias?: boolean;
+  
+  // Legacy compatibility fields for components that expect job structure
+  active?: boolean; // Derived from other fields
+  paid_in_cash?: boolean; // Legacy field
+  customers?: { // For backward compatibility
+    id: string;
+    name: string;
+    email?: string;
+    phone?: string;
+    address: string;
+  };
 }
 
 export interface CreateCustomerRequest {
   name: string;
-  address: string;
-  phone?: string;
   email?: string;
-  service_frequency?: string;
-  notes?: string;
+  phone?: string;
+  description: string; // Required - service description
+  address: string; // Required
+  price: number; // Required
+  frequency?: string;
+  estimated_duration?: number;
+  payment_status?: boolean;
+  exterior_windows?: boolean;
+  interior_windows?: boolean;
+  gutters?: boolean;
+  soffits?: boolean;
+  fascias?: boolean;
 }
 
 class CustomerService {
@@ -110,6 +138,32 @@ class CustomerService {
       return data.data;
     } catch (error) {
       console.error('Update customer error:', error);
+      throw error;
+    }
+  }
+
+  // Mark customer service as complete
+  async markServiceComplete(customerId: string): Promise<Customer> {
+    try {
+      const headers = await authService.getAuthHeaders();
+      
+      const response = await fetch(buildUrl(API_CONFIG.ENDPOINTS.CUSTOMER_BY_ID(customerId)), {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          active: false,
+          last_completed: new Date().toISOString().split('T')[0], // Today's date
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.data;
+    } catch (error) {
+      console.error('Mark service complete error:', error);
       throw error;
     }
   }

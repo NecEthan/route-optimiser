@@ -1,19 +1,20 @@
 import React, { useState } from "react";
 import { StyleSheet, Text, View, SafeAreaView, Alert, ScrollView } from "react-native";
 import JobList from "@/components/ui/job-list";
-import JobDetailsModal, { Job } from "@/components/ui/job-details-modal";
+import JobDetailsModal from "@/components/ui/job-details-modal";
 import AddJobModal from "@/components/ui/add-job-modal";
 import Button from "@/components/ui/button";
+import { Customer } from "@/lib/customer-service";
 
 export default function TodayScreen() {
-  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [showJobDetails, setShowJobDetails] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [showCustomerDetails, setShowCustomerDetails] = useState(false);
   const [showAddJobModal, setShowAddJobModal] = useState(false);
   const [jobListKey, setJobListKey] = useState(0); // Force re-render of job list
-  const [hasJobUpdates, setHasJobUpdates] = useState(false); // Track if we need to refresh
+  const [hasCustomerUpdates, setHasCustomerUpdates] = useState(false); // Track if we need to refresh
 
   const handleRefresh = () => {
-    Alert.alert("Refresh", "Refreshing job list...");
+    Alert.alert("Refresh", "Refreshing customer list...");
   };
 
   const handleAddJob = () => {
@@ -21,7 +22,7 @@ export default function TodayScreen() {
   };
 
   const handleJobAdded = () => {
-    console.log('✅ Job added successfully, refreshing job list');
+    console.log('✅ Customer added successfully, refreshing customer list');
     setJobListKey(prev => prev + 1); // Force refresh of job list
   };
 
@@ -30,46 +31,47 @@ export default function TodayScreen() {
   };
 
   const handleOptimiseRoute = () => {
-    Alert.alert("Optimise Route", "Optimising route for today's jobs...");
+    Alert.alert("Optimise Route", "Optimising route for today's customers...");
   };
 
-  const handleJobPress = (job: Job) => {
-    console.log('🎯 Job pressed in today screen:', job.name);
-    setSelectedJob(job);
-    setShowJobDetails(true);
+  const handleCustomerPress = (customer: Customer) => {
+    console.log('🎯 Customer pressed in today screen:', customer.name);
+    setSelectedCustomer(customer);
+    setShowCustomerDetails(true);
   };
 
-  const handleEditJob = (job: Job) => {
-    console.log('✏️ Edit job requested:', job.name);
-    setShowJobDetails(false);
+  const handleEditCustomer = (customer: Customer) => {
+    console.log('✏️ Edit customer requested:', customer.name);
+    setShowCustomerDetails(false);
     Alert.alert(
-      'Edit Job',
-      `Edit functionality for "${job.name}" will be implemented soon.`
+      'Edit Customer',
+      `Edit functionality for "${customer.name}" will be implemented soon.`
     );
   };
 
-  const handleJobUpdated = (updatedJob: Job) => {
-    console.log('🔄 Job updated:', updatedJob.description, 'Last completed:', updatedJob.last_completed);
+  const handleCustomerUpdated = (updatedCustomer: Customer) => {
+    console.log('🔄 Customer updated:', updatedCustomer.name, 'Last completed:', updatedCustomer.last_completed);
     
-    // Update the selected job with the new data from server
-    setSelectedJob(updatedJob);
+    // Update the selected customer with the new data from server
+    setSelectedCustomer(updatedCustomer);
     
-    // Mark that we have job updates that need to be reflected in the list
-    setHasJobUpdates(true);
+    // Mark that we have customer updates that need to be reflected in the list
+    setHasCustomerUpdates(true);
     
-    console.log('✅ Selected job state updated with server response');
-  };  const handleCloseJobDetails = () => {
-    setShowJobDetails(false);
-    setSelectedJob(null);
-    
-    // If there were job updates, refresh the job list
-    if (hasJobUpdates) {
-      console.log('🔄 Refreshing job list due to updates...');
-      setJobListKey(prev => prev + 1); // Force JobList to re-render and fetch fresh data
-      setHasJobUpdates(false); // Reset the flag
-    }
+    console.log('✅ Selected customer state updated with server response');
   };
 
+  const handleCloseCustomerDetails = () => {
+    setShowCustomerDetails(false);
+    setSelectedCustomer(null);
+    
+    // If there were customer updates, refresh the customer list
+    if (hasCustomerUpdates) {
+      console.log('🔄 Refreshing customer list due to updates...');
+      setJobListKey(prev => prev + 1); // Force JobList to re-render and fetch fresh data
+      setHasCustomerUpdates(false); // Reset the flag
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -78,21 +80,12 @@ export default function TodayScreen() {
         
         <View style={styles.buttonContainer}>
           <Button 
-            title="Add New Job" 
+            title="Add New Customer" 
             onPress={handleAddJob}
             variant="outline"
             size="medium"
           />
         </View>
-        {/* <View style={[styles.buttonContainer, styles.center]}>
-          <Button 
-            title="Optimise Route" 
-            onPress={handleOptimiseRoute}
-            variant="primary"
-            size="medium"
-            length="medium"
-          />
-        </View> */}
       </View>
       
       <ScrollView 
@@ -104,22 +97,22 @@ export default function TodayScreen() {
           key={jobListKey} // Force re-render when key changes
           showEdit={false} 
           onEdit={() => {}} 
-          onJobPress={handleJobPress}
+          onJobPress={handleCustomerPress}
         />
         
         
       </ScrollView>
 
-      {/* Job Details Modal */}
+      {/* Customer Details Modal */}
       <JobDetailsModal
-        visible={showJobDetails}
-        job={selectedJob}
-        onClose={handleCloseJobDetails}
-        onEdit={handleEditJob}
-        onJobUpdated={handleJobUpdated}
+        visible={showCustomerDetails}
+        job={selectedCustomer}
+        onClose={handleCloseCustomerDetails}
+        onEdit={handleEditCustomer}
+        onJobUpdated={handleCustomerUpdated}
       />
 
-      {/* Add Job Modal */}
+      {/* Add Customer Modal */}
       <AddJobModal
         visible={showAddJobModal}
         onClose={handleCloseAddJobModal}

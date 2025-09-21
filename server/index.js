@@ -92,7 +92,6 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/customers', require('./routes/customers'));
 app.use('/api/routes', require('./routes/routes'));
 app.use('/api/accounting', require('./routes/accounting'));
-app.use('/api/jobs', require('./routes/jobs'));
 
 // Basic route
 app.get('/', (req, res) => {

@@ -1,36 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
+import { Customer } from '@/lib/customer-service';
 
 type JobProps = {
-  job: {
-    id: string; // uuid from database
-    customer_id?: string; // uuid foreign key
-    user_id?: string; // uuid foreign key
-    description: string; // text not null
-    price: number; // numeric(10, 2) not null
-    frequency?: string; // character varying(50), default 'monthly'
-    last_completed?: string; // date
-    estimated_duration?: number; // integer (minutes)
-    active?: boolean; // boolean, default true
-    paid_in_cash?: boolean; // boolean, default false
-    created_at?: string; // timestamp with time zone
-    updated_at?: string; // timestamp with time zone
-    customers?: {
-      id: string;
-      name: string;
-      email?: string;
-      phone?: string;
-      address: string;
-    };
-    title?: string;
-    service_type?: string;
-    completed?: boolean;
-    name?: string;
-    address?: string;
-    phone?: string;
-    email?: string;
-  };
+  job: Customer;
   onToggle?: (isChecked: boolean) => void;
   onCashToggle?: (jobId: string, isPaidInCash: boolean) => void;
   onEdit?: (jobId: string) => void;
@@ -60,11 +34,11 @@ export default function Job({ job, onToggle, onCashToggle, onEdit, onPress, show
     onPress?.();
   };
 
-  const displayTitle = job.title || job.description || 'Untitled Job';
-  const displayAddress = job.customers?.address || job.address || 'No address';
-  const displayPhone = job.customers?.phone || job.phone;
-  const displayEmail = job.customers?.email || job.email;
-  const customerName = job.customers?.name;
+  const displayTitle = job.description || 'No description'; // Use description field from customer schema
+  const displayAddress = job.address || 'No address';
+  const displayPhone = job.phone;
+  const displayEmail = job.email;
+  const customerName = job.name; // Customer name is directly on the object
   const jobPrice = job.price;
   const jobFrequency = job.frequency;
   const estimatedDuration = job.estimated_duration;
@@ -98,46 +72,34 @@ export default function Job({ job, onToggle, onCashToggle, onEdit, onPress, show
       
       <View style={styles.content}>
         <Text style={styles.name}>
+          {customerName}
+        </Text>
+        <Text style={styles.description}>
           {displayTitle}
         </Text>
-        {customerName && (
-          <Text style={styles.customerName}>
-            👤 {customerName}
-          </Text>
-        )}
         <Text style={styles.address}>
-          📍 {displayAddress}
+          {displayAddress}
         </Text>
         {jobPrice && (
           <Text style={styles.price}>
-            💰 ${jobPrice}
+            £{jobPrice}
           </Text>
         )}
-        {jobFrequency && (
-          <Text style={styles.frequency}>
-            🔄 {jobFrequency}
-          </Text>
-        )}
+       
         {estimatedDuration && (
           <Text style={styles.duration}>
-            ⏱️ {estimatedDuration} min
+            {estimatedDuration} min
           </Text>
         )}
-        {lastCompleted && (
-          <Text style={styles.lastCompleted}>
-            ✅ Last: {new Date(lastCompleted).toLocaleDateString()}
-          </Text>
-        )}
-        {displayPhone && (
-          <Text style={styles.phone}>
-            📞 {displayPhone}
-          </Text>
-        )}
-        {displayEmail && (
-          <Text style={styles.email}>
-            ✉️ {displayEmail}
-          </Text>
-        )}
+       
+        {/* Service type indicators */}
+        <View style={styles.serviceTypes}>
+          {job.exterior_windows && <Text style={styles.serviceTag}>🪟 Exterior</Text>}
+          {job.interior_windows && <Text style={styles.serviceTag}>🏠 Interior</Text>}
+          {job.gutters && <Text style={styles.serviceTag}>🌊 Gutters</Text>}
+          {job.soffits && <Text style={styles.serviceTag}>🏗️ Soffits</Text>}
+          {job.fascias && <Text style={styles.serviceTag}>🏠 Fascias</Text>}
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -256,5 +218,26 @@ const styles = StyleSheet.create({
     color: '#4CAF50',
     marginBottom: 2,
     fontWeight: '500',
+  },
+  description: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 4,
+    fontStyle: 'italic',
+  },
+  serviceTypes: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+    gap: 6,
+  },
+  serviceTag: {
+    fontSize: 12,
+    color: '#666',
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
 });

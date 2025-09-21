@@ -1,95 +1,55 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Job from "./job";
-import { API_CONFIG } from '@/lib';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { customerService } from '@/lib';
 
 export default function JobList({ showEdit = false, onEdit, onJobPress }) {
-    const [jobs, setJobs] = useState([]);
+    const [customers, setCustomers] = useState([]);
 
     useEffect(() => {
-        fetchJobs();
+        fetchCustomers();
     }, []);
 
-    const fetchJobs = async () => {
+    const fetchCustomers = async () => {
         try {
-            const token = await AsyncStorage.getItem('access_token');
-            
-            const response = await fetch(API_CONFIG.BASE_URL + '/api/jobs', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-            });
-            
-            const data = await response.json();
-            
-            const jobsData = data.success && Array.isArray(data.jobs) 
-                ? data.jobs 
-                : data.success && Array.isArray(data.data) 
-                ? data.data 
-                : [];
-            setJobs(jobsData);
-
+            const customersData = await customerService.getAllCustomers();
+            console.log('✅ Fetched customers:', customersData.length);
+            setCustomers(customersData);
         } catch (error) {
-            console.error("❌ Error fetching jobs:", error);
-            setJobs([]); 
+            console.error("❌ Error fetching customers:", error);
+            setCustomers([]); 
         }
     };
 
-    const handleJobToggle = (jobId, isChecked) => {
-        // Handle job completion toggle
-        console.log(`Job ${jobId} marked as ${isChecked ? 'completed' : 'incomplete'}`);
+    const handleJobToggle = (customerId, isChecked) => {
+        // Handle customer service completion toggle
+        console.log(`Customer ${customerId} service marked as ${isChecked ? 'completed' : 'incomplete'}`);
     };
 
-    const handleCashToggle = async (jobId, isPaidInCash) => {
-        // Handle cash payment toggle
-        console.log(`Job ${jobId} payment updated: ${isPaidInCash ? 'paid in cash' : 'not paid in cash'}`);
+    const handleCashToggle = (customerId, isPaidInCash) => {
+        // Handle cash payment toggle for customer - no API call, just local state
+        console.log(`Customer ${customerId} payment updated locally: ${isPaidInCash ? 'paid in cash' : 'not paid in cash'}`);
         
-        try {
-            const token = await AsyncStorage.getItem('access_token');
-            
-            const response = await fetch(`${API_CONFIG.BASE_URL}/api/jobs/${jobId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    paid_in_cash: isPaidInCash
-                }),
-            });
-            
-            if (response.ok) {
-                // Update local state
-                setJobs(prevJobs => prevJobs.map(job => 
-                    job.id === jobId ? { ...job, paid_in_cash: isPaidInCash } : job
-                ));
-                console.log('✅ Cash payment status updated successfully');
-            } else {
-                throw new Error('Failed to update cash payment status');
-            }
-        } catch (error) {
-            console.error('❌ Error updating cash payment status:', error);
-            // Could show an alert here to inform the user
-        }
+        // Update local state only
+        setCustomers(prevCustomers => prevCustomers.map(customer => 
+            customer.id === customerId ? { ...customer, paid_in_cash: isPaidInCash } : customer
+        ));
     };
 
-    const handleJobPress = (job) => {
-        onJobPress?.(job);
+    const handleJobPress = (customer) => {
+        onJobPress?.(customer);
     };
 
     return (
         <View style={styles.container}>
-            {Array.isArray(jobs) && jobs.map((job) => (
-                <View key={job.id} style={styles.jobWrapper}>
+            {Array.isArray(customers) && customers.map((customer) => (
+                <View key={customer.id} style={styles.jobWrapper}>
                     <Job 
-                        job={job} 
-                        onToggle={(isChecked) => handleJobToggle(job.id, isChecked)}
-                        onCashToggle={(isPaidInCash) => handleCashToggle(job.id, isPaidInCash)}
+                        job={customer} 
+                        onToggle={(isChecked) => handleJobToggle(customer.id, isChecked)}
+                        onCashToggle={(isPaidInCash) => handleCashToggle(customer.id, isPaidInCash)}
                         onEdit={onEdit}
-                        onPress={() => handleJobPress(job)}
+                        onPress={() => handleJobPress(customer)}
                         showEdit={showEdit}
                     />
                 </View>
