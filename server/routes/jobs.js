@@ -121,6 +121,8 @@ router.post('/', async (req, res) => {
       frequency, 
       price, 
       estimated_duration,
+      payment_status,
+      active
     } = req.body;
 
     // Validate required fields
@@ -145,6 +147,13 @@ router.post('/', async (req, res) => {
       });
     }
 
+    if (!payment_status || payment_status.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'payment_status is required'
+      });
+    }
+
     // Verify customer exists and belongs to user
     const { data: customer, error: customerError } = await supabase
       .from('customers')
@@ -166,7 +175,9 @@ router.post('/', async (req, res) => {
       description: description.trim(),
       price: parseFloat(price),
       frequency: frequency || 'monthly',
-      estimated_duration: estimated_duration ? parseInt(estimated_duration) : null
+      estimated_duration: estimated_duration ? parseInt(estimated_duration) : null,
+      payment_status: payment_status || 'pending',
+      active: active !== undefined ? active : true
     };
     
     console.log('Inserting job data:', jobData);
@@ -331,16 +342,11 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// POST /api/jobs/:id/complete - Mark job as complete
-router.post('/:id/complete', async (req, res) => {
+router.patch('/:id/complete', async (req, res) => {
   try {
-    const { notes, completed_at } = req.body;
-    const completionTime = completed_at || new Date().toISOString();
-
-    // Verify job exists and belongs to user
     const { data: existingJob, error: fetchError } = await supabase
       .from('jobs')
-      .select('id, title, completed')
+      .select('id, description, active')
       .eq('id', req.params.id)
       .eq('user_id', req.user.id)
       .single();
@@ -352,20 +358,18 @@ router.post('/:id/complete', async (req, res) => {
       });
     }
 
-    if (existingJob.completed) {
+    if (!existingJob.active) {
       return res.status(400).json({
         success: false,
-        message: 'Job is already marked as complete'
+        message: 'Job is already completed'
       });
     }
 
     const { data, error } = await supabase
       .from('jobs')
       .update({
-        completed: true,
-        completed_at: completionTime,
-        status: 'completed',
-        completion_notes: notes || '',
+        active: false,
+        last_completed: new Date().toISOString().split('T')[0],
         updated_at: new Date().toISOString()
       })
       .eq('id', req.params.id)
@@ -384,27 +388,12 @@ router.post('/:id/complete', async (req, res) => {
 
     if (error) throw error;
 
-    // Log completion to job_history table if it exists
-    try {
-      await supabase
-        .from('job_history')
-        .insert({
-          job_id: req.params.id,
-          user_id: req.user.id,
-          action: 'completed',
-          notes: notes || '',
-          created_at: completionTime
-        });
-    } catch (historyError) {
-      console.warn('Could not log to job_history:', historyError.message);
-    }
-
     res.json({
       success: true,
       job: data,
-      message: `Job "${existingJob.title}" marked as complete`
+      message: `Job "${existingJob.description}" completed and removed from today's list`
     });
-  } catch (error) {
+      } catch (error) {
     console.error('Complete job error:', error);
     res.status(500).json({
       success: false,

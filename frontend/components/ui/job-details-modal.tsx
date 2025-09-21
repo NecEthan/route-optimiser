@@ -63,7 +63,6 @@ export default function JobDetailsModal({
   const [isUpdating, setIsUpdating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showCompletionPrompt, setShowCompletionPrompt] = useState(false);
-  const [completionNotes, setCompletionNotes] = useState('');
   const [editFormData, setEditFormData] = useState({
     description: '',
     price: '',
@@ -231,92 +230,46 @@ export default function JobDetailsModal({
       return;
     }
 
-    if (job.last_completed) {
-      // Job is already completed, ask if they want to mark as incomplete
-      Alert.alert(
-        'Job Already Complete',
-        'This job is already marked as complete. Would you like to mark it as incomplete?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Mark Incomplete',
-            style: 'destructive',
-            onPress: () => handleMarkIncomplete(),
-          },
-        ]
-      );
-      return;
-    }
-
-    setCompletionNotes('');
     setShowCompletionPrompt(true);
   };
 
   const handleCompletionConfirm = () => {
     setShowCompletionPrompt(false);
-    performJobCompletion(completionNotes);
+    performJobCompletion();
   };
 
   const handleCompletionCancel = () => {
     setShowCompletionPrompt(false);
-    setCompletionNotes('');
   };
 
-  const performJobCompletion = async (notes?: string) => {
+  const performJobCompletion = async () => {
     if (!job?.id) return;
 
     setIsUpdating(true);
     try {
+      // Mark job as complete
       const updatedJob = await jobService.markJobComplete(job.id);
       
-      if (onJobUpdated) {
-        onJobUpdated(updatedJob);
+      // Add payment record
+      try {
+        await jobService.addPayment(job.id, job.price);
+      } catch (paymentError) {
+        console.error('Error adding payment:', paymentError);
+        // Continue even if payment fails - job is still completed
       }
-
-      setTimeout(() => {
-        onClose();
-      }, 1000);
-
-    } catch (error) {
-      Alert.alert(
-        'Error',
-        'Failed to mark job as complete. Please try again.',
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleMarkIncomplete = async () => {
-    if (!job?.id) return;
-
-    setIsUpdating(true);
-    try {
-      console.log('🔄 Marking job as incomplete:', job.id);
       
-      const updatedJob = await jobService.markJobIncomplete(job.id);
-      
-      Alert.alert(
-        'Success!',
-        `Job "${job.description}" has been marked as incomplete.`,
-        [{ text: 'OK' }]
-      );
-
-      // Update the job in parent component if callback provided
+      // Update parent component
       if (onJobUpdated) {
         onJobUpdated(updatedJob);
       }
 
     } catch (error) {
-      console.error('❌ Failed to mark job incomplete:', error);
-      Alert.alert(
-        'Error',
-        'Failed to mark job as incomplete. Please try again.',
-        [{ text: 'OK' }]
-      );
+      console.error('❌ Failed to mark job complete:', error);
+      // Continue and close modal even if job completion failed
     } finally {
       setIsUpdating(false);
+      // Always close modal regardless of success or failure
+      onClose();
     }
   };
 
@@ -519,7 +472,7 @@ export default function JobDetailsModal({
             <Button
               title={"Mark as Complete"}
               onPress={handleMarkComplete}
-              variant={job.last_completed ? "outline" : "primary"}
+              variant={"primary"}
               size="large"
               style={Object.assign({}, styles.footerButton, { opacity: isUpdating ? 0.6 : 1 })}
               disabled={isUpdating}
@@ -538,34 +491,48 @@ export default function JobDetailsModal({
     >
       <View style={styles.promptOverlay}>
         <View style={styles.promptContainer}>
-          <Text style={styles.promptTitle}>Mark Job Complete</Text>
+          {/* Header with Icon */}
+          <View style={styles.promptHeader}>
+            <View style={styles.promptIconContainer}>
+              <Ionicons name="checkmark-circle" size={32} color="#4CAF50" />
+            </View>
+            <Text style={styles.promptTitle}>Complete Job</Text>
+            <Text style={styles.promptSubtitle}>
+              {job?.customers?.name ? `${job.customers.name} • ` : ''}{job?.price ? `$${job.price}` : ''}
+            </Text>
+          </View>
+
+          {/* Job Description */}
+          <View style={styles.promptJobInfo}>
+            <Text style={styles.promptJobDescription}>&ldquo;{job?.description}&rdquo;</Text>
+            {job?.customers?.address && (
+              <Text style={styles.promptJobAddress}>📍 {job.customers.address}</Text>
+            )}
+          </View>
+
+          {/* Confirmation Message */}
           <Text style={styles.promptMessage}>
-            Are you sure you want to mark this job as complete? You can add optional notes below.
+            Are you sure you want to mark this job as complete?
           </Text>
-          
-          <TextInput
-            style={styles.promptInput}
-            placeholder="Optional notes..."
-            value={completionNotes}
-            onChangeText={setCompletionNotes}
-            multiline
-            numberOfLines={3}
-            textAlignVertical="top"
-          />
-          
+
+          {/* Action Buttons */}
           <View style={styles.promptButtons}>
             <TouchableOpacity
               style={[styles.promptButton, styles.promptCancelButton]}
               onPress={handleCompletionCancel}
+              activeOpacity={0.7}
             >
+              <Ionicons name="close" size={18} color="#666" />
               <Text style={styles.promptCancelText}>Cancel</Text>
             </TouchableOpacity>
             
             <TouchableOpacity
               style={[styles.promptButton, styles.promptConfirmButton]}
               onPress={handleCompletionConfirm}
+              activeOpacity={0.8}
             >
-              <Text style={styles.promptConfirmText}>Mark Complete</Text>
+              <Ionicons name="checkmark" size={18} color="#fff" />
+              <Text style={styles.promptConfirmText}>Complete Job</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -762,65 +729,97 @@ const styles = StyleSheet.create({
   // Prompt modal styles
   promptOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 20,
   },
   promptContainer: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    marginHorizontal: 20,
-    padding: 24,
+    borderRadius: 20,
+    padding: 0,
+    width: '100%',
+    maxWidth: 340,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 16,
+  },
+  promptHeader: {
+    alignItems: 'center',
+    paddingTop: 32,
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+  },
+  promptIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#E8F5E8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
   },
   promptTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  promptSubtitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#4CAF50',
+    textAlign: 'center',
+  },
+  promptJobInfo: {
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+    alignItems: 'center',
+  },
+  promptJobDescription: {
+    fontSize: 16,
+    fontWeight: '500',
     color: '#333',
+    textAlign: 'center',
     marginBottom: 8,
+    lineHeight: 22,
+  },
+  promptJobAddress: {
+    fontSize: 14,
+    color: '#666',
     textAlign: 'center',
   },
   promptMessage: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#666',
-    marginBottom: 20,
+    paddingHorizontal: 24,
+    paddingBottom: 28,
     textAlign: 'center',
-    lineHeight: 20,
-  },
-  promptInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 20,
-    minHeight: 80,
-    textAlignVertical: 'top',
+    lineHeight: 22,
   },
   promptButtons: {
     flexDirection: 'row',
-    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
   },
   promptButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
+    flexDirection: 'row',
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
   },
   promptCancelButton: {
-    backgroundColor: '#f5f5f5',
-    borderWidth: 1,
-    borderColor: '#ddd',
+    backgroundColor: 'transparent',
+    borderRightWidth: 1,
+    borderRightColor: '#f0f0f0',
   },
   promptConfirmButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: 'transparent',
   },
   promptCancelText: {
     fontSize: 16,
@@ -829,7 +828,7 @@ const styles = StyleSheet.create({
   },
   promptConfirmText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
+    fontWeight: '700',
+    color: '#4CAF50',
   },
 });
