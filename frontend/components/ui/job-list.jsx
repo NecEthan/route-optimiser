@@ -4,7 +4,7 @@ import Job from "./job";
 import { API_CONFIG } from '@/lib';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export default function JobList({ showEdit = false, onEdit }) {
+export default function JobList({ showEdit = false, onEdit, onJobPress }) {
     const [jobs, setJobs] = useState([]);
 
     useEffect(() => {
@@ -38,6 +38,11 @@ export default function JobList({ showEdit = false, onEdit }) {
         console.log(`Job ${jobId} ${isChecked ? 'completed' : 'unchecked'}`);
     };
 
+    const handleJobPress = (job) => {
+        console.log('🎯 Job pressed:', job.name);
+        onJobPress?.(job);
+    };
+
     return (
         <View style={styles.container}>
             {jobs.map((job) => (
@@ -46,6 +51,7 @@ export default function JobList({ showEdit = false, onEdit }) {
                         job={job} 
                         onToggle={(isChecked) => handleJobToggle(job.id, isChecked)}
                         onEdit={onEdit}
+                        onPress={() => handleJobPress(job)}
                         showEdit={showEdit}
                     />
                 </View>

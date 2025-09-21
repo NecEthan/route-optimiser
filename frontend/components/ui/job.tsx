@@ -12,10 +12,11 @@ type JobProps = {
   };
   onToggle?: (isChecked: boolean) => void;
   onEdit?: (jobId: string | number) => void;
+  onPress?: () => void; // New prop for handling job press
   showEdit?: boolean; // Flag to show edit button instead of checkbox
 };
 
-export default function Job({ job, onToggle, onEdit, showEdit = false }: JobProps) {
+export default function Job({ job, onToggle, onEdit, onPress, showEdit = false }: JobProps) {
   const [isChecked, setIsChecked] = useState(false);
 
   const handleToggle = () => {
@@ -28,8 +29,12 @@ export default function Job({ job, onToggle, onEdit, showEdit = false }: JobProp
     onEdit?.(job.id || job.name);
   };
 
+  const handlePress = () => {
+    onPress?.();
+  };
+
   return (
-    <View style={styles.container}>
+    <TouchableOpacity style={styles.container} onPress={handlePress} activeOpacity={0.7}>
       {showEdit ? (
         // Edit button for customers
         <TouchableOpacity 
@@ -72,7 +77,7 @@ export default function Job({ job, onToggle, onEdit, showEdit = false }: JobProp
           </Text>
         )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
