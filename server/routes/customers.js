@@ -97,9 +97,12 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('add/', async (req, res) => {
+router.post('/', async (req, res) => {
   try {
-    const { name, email, phone, address, latitude, longitude, frequency } = req.body;
+    console.log('POST /api/customers - Received data:', req.body);
+    console.log('User from token:', req.user);
+    
+    const { name, email, phone, address, latitude, longitude } = req.body;
 
     if (!name || !address) {
       return res.status(400).json({
@@ -108,21 +111,35 @@ router.post('add/', async (req, res) => {
       });
     }
 
+    const customerData = {
+      name,
+      email,
+      phone,
+      address,
+      user_id: req.user.id, // Use authenticated user ID
+      latitude: latitude ? parseFloat(latitude) : null,
+      longitude: longitude ? parseFloat(longitude) : null,
+      // Remove frequency - it doesn't exist in your schema
+    };
+
+    console.log('Inserting customer data:', customerData);
+
     const { data, error } = await supabase
       .from('customers')
-      .insert({
-        name,
-        email,
-        phone,
-        address,
-        latitude: latitude ? parseFloat(latitude) : null,
-        longitude: longitude ? parseFloat(longitude) : null,
-        frequency: frequency || 'monthly'
-      })
+      .insert(customerData)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase insert error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to create customer',
+        error: error.message
+      });
+    }
+
+    console.log('Customer created successfully:', data);
 
     res.status(201).json({
       success: true,
@@ -133,7 +150,7 @@ router.post('add/', async (req, res) => {
     console.error('Create customer error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to create customer',
+      message: 'Internal server error',
       error: error.message
     });
   }
@@ -142,27 +159,32 @@ router.post('add/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     console.log('--------------------')
-    const { id, name, email, phone, address, latitude, longitude, frequency } = req.body;
+    const { id, name, email, phone, address, latitude, longitude } = req.body;
     console.log('Updating customer ID:', req.params.id, 'with data:', req.body);
     console.log(id, 'id')
 
+    // Only update fields that exist in the database schema
+    const updateData = {
+      name,
+      email,
+      phone,
+      address,
+      latitude: latitude ? parseFloat(latitude) : null,
+      longitude: longitude ? parseFloat(longitude) : null,
+      updated_at: new Date().toISOString()
+    };
+
+    console.log('Filtered update data:', updateData);
+
     const { data, error } = await supabase
       .from('customers')
-      .update({
-        name,
-        email,
-        phone,
-        address,
-        latitude: latitude ? parseFloat(latitude) : null,
-        longitude: longitude ? parseFloat(longitude) : null,
-        frequency,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', req.params.id)
       .select()
       .single();
 
     if (error) {
+      console.error('Supabase update error:', error);
       if (error.code === 'PGRST116') {
         return res.status(404).json({
           success: false,
