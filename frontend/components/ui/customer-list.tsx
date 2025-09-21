@@ -4,9 +4,30 @@ import Customer from "./customer";
 import { API_CONFIG } from '@/lib';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-function CustomerList({ showEdit = true, onEdit }, ref) {
-    const [customers, setCustomers] = useState([]);
+type CustomerType = {
+    id: string | number;
+    name: string;
+    address: string;
+    phone?: string;
+    email?: string;
+    frequency?: string;
+    created_at?: string;
+    updated_at?: string;
+};
 
+type CustomerListProps = {
+    showEdit?: boolean;
+    onEdit?: (customerId: string | number) => void;
+    onCustomerPress?: (customer: CustomerType) => void;
+};
+
+type CustomerListRef = {
+    refreshCustomers: () => void;
+};
+
+const CustomerList = forwardRef<CustomerListRef, CustomerListProps>(({ showEdit = true, onEdit, onCustomerPress }, ref) => {
+    const [customers, setCustomers] = useState<CustomerType[]>([]);
+    
     const fetchCustomers = async () => {
         try {
             console.log('🔄 Starting to fetch customers...');
@@ -34,7 +55,7 @@ function CustomerList({ showEdit = true, onEdit }, ref) {
             console.log("👥 Final customers array:", customers.length, "customers");
             setCustomers(customers);
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("❌ Error fetching customers:", error);
             console.error("❌ Error details:", error.message, error.name);
             setCustomers([]);
@@ -50,7 +71,7 @@ function CustomerList({ showEdit = true, onEdit }, ref) {
         refreshCustomers: fetchCustomers,
     }));
 
-    const handleCustomerToggle = (customerId, isChecked) => {
+    const handleCustomerToggle = (customerId: string | number, isChecked: boolean) => {
         console.log(`Customer ${customerId} ${isChecked ? 'checked' : 'unchecked'}`);
     };
 
@@ -62,15 +83,18 @@ function CustomerList({ showEdit = true, onEdit }, ref) {
                         customer={customer} 
                         onToggle={(isChecked) => handleCustomerToggle(customer.id, isChecked)}
                         onEdit={onEdit}
+                        {...(onCustomerPress && { onPress: () => onCustomerPress(customer) })}
                         showEdit={showEdit}
                     />
                 </View>
             ))}
         </View>
     );
-}
+});
 
-export default forwardRef(CustomerList);
+CustomerList.displayName = 'CustomerList';
+
+export default CustomerList;
 
 const styles = StyleSheet.create({
     container: {

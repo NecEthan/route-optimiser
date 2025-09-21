@@ -141,7 +141,10 @@ router.post('add/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    const { name, email, phone, address, latitude, longitude, frequency } = req.body;
+    console.log('--------------------')
+    const { id, name, email, phone, address, latitude, longitude, frequency } = req.body;
+    console.log('Updating customer ID:', req.params.id, 'with data:', req.body);
+    console.log(id, 'id')
 
     const { data, error } = await supabase
       .from('customers')

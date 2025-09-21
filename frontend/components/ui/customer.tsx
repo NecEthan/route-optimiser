@@ -9,13 +9,17 @@ type CustomerProps = {
     address: string;
     phone?: string;
     email?: string;
+    frequency?: string;
+    created_at?: string;
+    updated_at?: string;
   };
   onToggle?: (isChecked: boolean) => void;
   onEdit?: (jobId: string | number) => void;
+  onPress?: (customer: any) => void;
   showEdit?: boolean; 
 };
 
-export default function Customer({ customer, onToggle, onEdit, showEdit = false }: CustomerProps) {
+export default function Customer({ customer, onToggle, onEdit, onPress, showEdit = false }: CustomerProps) {
   const [isChecked, setIsChecked] = useState(false);
 
   const handleToggle = () => {
@@ -28,8 +32,16 @@ export default function Customer({ customer, onToggle, onEdit, showEdit = false 
     onEdit?.(customer.id || customer.name);
   };
 
+  const handlePress = () => {
+    onPress?.(customer);
+  };
+
   return (
-    <View style={styles.container}>
+    <TouchableOpacity 
+      style={styles.container}
+      onPress={showEdit ? handlePress : undefined}
+      activeOpacity={showEdit ? 0.7 : 1}
+    >
       {showEdit ? (
         // Edit button for customers
         <TouchableOpacity 
@@ -40,7 +52,6 @@ export default function Customer({ customer, onToggle, onEdit, showEdit = false 
           <FontAwesome name="edit" size={16} color="#007AFF" />
         </TouchableOpacity>
       ) : (
-        // Checkbox for jobs
         <TouchableOpacity 
           style={styles.checkbox} 
           onPress={handleToggle}
@@ -72,7 +83,13 @@ export default function Customer({ customer, onToggle, onEdit, showEdit = false 
           </Text>
         )}
       </View>
-    </View>
+      
+      {showEdit && (
+        <View style={styles.detailsIndicator}>
+          <FontAwesome name="chevron-right" size={14} color="#999" />
+        </View>
+      )}
+    </TouchableOpacity>
   );
 }
 
@@ -158,5 +175,10 @@ const styles = StyleSheet.create({
   email: {
     fontSize: 14,
     color: '#666',
+  },
+  detailsIndicator: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
   },
 });

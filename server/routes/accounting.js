@@ -558,6 +558,7 @@ router.put('/payments/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { amount, payment_date, method, notes, customer_id, job_id } = req.body;
+    console.log('💰 Updating payment ID:', id, 'with data:', req.body);
 
     // Validation
     if (!amount) {

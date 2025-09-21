@@ -1,11 +1,16 @@
 import React, { useState, useRef } from "react";
-import { Alert, SafeAreaView, View, StyleSheet, Text, ScrollView } from "react-native";
+import { SafeAreaView, View, StyleSheet, Text, ScrollView } from "react-native";
 import Button from "@/components/ui/button";
 import CustomerList from "@/components/ui/customer-list";
 import AddCustomerModal from "@/components/ui/add-customer-modal";
+import CustomerDetailsModal from "@/components/ui/customer-details-modal";
+import EditCustomerModal from "@/components/ui/edit-customer-modal";
 
 export default function CustomersScreen() {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const customerListRef = useRef<any>(null);
 
@@ -30,12 +35,34 @@ export default function CustomersScreen() {
     }
   };
 
-  const handleViewAll = () => {
-    Alert.alert("View All", "Viewing all customers...");
+  const handleEditCustomer = (customerId: string | number) => {
+    // Find the customer by ID and show edit modal
+    const customer = selectedCustomer; // This will be set when coming from details modal
+    if (customer) {
+      setShowDetailsModal(false); 
+      setShowEditModal(true); 
+    } 
   };
 
-  const handleEditCustomer = (customerId: string | number) => {
-    Alert.alert("Edit Customer", `Editing customer: ${customerId}`);
+  const handleEditCustomerFromModal = (customer: any) => {
+    setSelectedCustomer(customer);
+    setShowDetailsModal(false);
+    setShowEditModal(true);
+  };
+
+  const handleCustomerUpdated = () => {
+    // Refresh the customer list when a customer is updated
+    if (customerListRef.current?.refreshCustomers) {
+      customerListRef.current.refreshCustomers();
+    } else {
+      setRefreshTrigger(prev => prev + 1);
+    }
+  };
+
+  const handleCustomerPress = (customer: any) => {
+    console.log('🚀 Customer pressed in customers screen:', customer.name);
+    setSelectedCustomer(customer);
+    setShowDetailsModal(true);
   };
    
      return (
@@ -68,10 +95,11 @@ export default function CustomersScreen() {
              ref={customerListRef}
              showEdit={true} 
              onEdit={handleEditCustomer}
+             onCustomerPress={handleCustomerPress}
              key={refreshTrigger}
            />
            
-           <View style={[styles.buttonContainer, styles.center]}>
+           {/* <View style={[styles.buttonContainer, styles.center]}>
              <Button 
                title="View All Customers" 
                onPress={handleViewAll}
@@ -79,13 +107,27 @@ export default function CustomersScreen() {
                size="medium"
                length="medium"
              />
-           </View>
+           </View> */}
          </ScrollView>
 
          <AddCustomerModal
            visible={showAddModal}
            onClose={() => setShowAddModal(false)}
            onCustomerAdded={handleCustomerAdded}
+         />
+
+         <CustomerDetailsModal
+           visible={showDetailsModal}
+           customer={selectedCustomer}
+           onClose={() => setShowDetailsModal(false)}
+           onEdit={handleEditCustomerFromModal}
+         />
+
+         <EditCustomerModal
+           visible={showEditModal}
+           customer={selectedCustomer}
+           onClose={() => setShowEditModal(false)}
+           onCustomerUpdated={handleCustomerUpdated}
          />
        </SafeAreaView>
      );
