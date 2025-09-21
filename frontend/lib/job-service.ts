@@ -65,27 +65,6 @@ class JobService {
     }
   }
 
-  async addPayment(jobId: string, amount: number): Promise<Job> {
-    try {
-      const headers = await authService.getAuthHeaders();
-
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/jobs/${jobId}/payments`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ amount })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data.job;
-    } catch (error) {
-      throw error;
-    }
-  }
-
   async markJobIncomplete(jobId: string): Promise<Job> {
     try {
       const headers = await authService.getAuthHeaders();

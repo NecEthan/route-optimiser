@@ -522,13 +522,14 @@ router.post('/payments', async (req, res) => {
           id,
           name,
           email,
-          phone
+          phone,
+          address
         ),
         jobs:job_id (
           id,
           description,
-          address,
-          status
+          price,
+          frequency
         )
       `)
       .single();

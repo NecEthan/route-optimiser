@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Button from './button';
 import { jobService, API_CONFIG } from '@/lib';
+import { accountingService } from '@/lib/accounting-service';
 
 export interface Job {
   id: string; // UUID
@@ -243,20 +244,23 @@ export default function JobDetailsModal({
   };
 
   const performJobCompletion = async () => {
+    console.log(job, 'job')
     if (!job?.id) return;
 
     setIsUpdating(true);
     try {
       // Mark job as complete
       const updatedJob = await jobService.markJobComplete(job.id);
+      console.log('✅ Job marked as complete:', job);
+        const test = await accountingService.addPayment({
+          job_id: job.id,
+          customer_id: job.customer_id || job.customers?.id || '',
+          amount: job.price,
+          method: 'cash',
+          notes: `Payment for: ${job.description}`
+        });
+        console.log('✅ Payment added successfullyyyyyyyyyyyyyyyyy', test);
       
-      // Add payment record
-      try {
-        await jobService.addPayment(job.id, job.price);
-      } catch (paymentError) {
-        console.error('Error adding payment:', paymentError);
-        // Continue even if payment fails - job is still completed
-      }
       
       // Update parent component
       if (onJobUpdated) {
