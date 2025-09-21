@@ -1,5 +1,6 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Tabs } from 'expo-router';
+import { View } from 'react-native';
 
 export default function TabLayout() {
   return (
@@ -19,6 +20,10 @@ export default function TabLayout() {
           fontSize: 12,
           fontWeight: '500',
         },
+        tabBarIconStyle: {
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
         headerShown: false,
       }}
     >
@@ -27,7 +32,9 @@ export default function TabLayout() {
         options={{
           title: 'Today',
           tabBarIcon: ({ color }) => (
-            <FontAwesome size={24} name="calendar" color={color} />
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <FontAwesome size={24} name="calendar" color={color} />
+            </View>
           ),
         }}
       />
@@ -36,7 +43,9 @@ export default function TabLayout() {
         options={{
           title: 'Customers',
           tabBarIcon: ({ color }) => (
-            <FontAwesome size={24} name="users" color={color} />
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <FontAwesome size={24} name="users" color={color} />
+            </View>
           ),
         }}
       />
@@ -45,7 +54,9 @@ export default function TabLayout() {
         options={{
           title: 'Accounting',
           tabBarIcon: ({ color }) => (
-            <FontAwesome size={24} name="dollar" color={color} />
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <FontAwesome size={24} name="dollar" color={color} />
+            </View>
           ),
         }}
       />
@@ -54,7 +65,9 @@ export default function TabLayout() {
         options={{
           title: 'Settings',
           tabBarIcon: ({ color }) => (
-            <FontAwesome size={24} name="cog" color={color} />
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <FontAwesome size={24} name="cog" color={color} />
+            </View>
           ),
         }}
       />

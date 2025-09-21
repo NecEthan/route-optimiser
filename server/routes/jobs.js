@@ -112,23 +112,36 @@ router.get('/:id', async (req, res) => {
 // POST /api/jobs - Create new job
 router.post('/', async (req, res) => {
   try {
+    console.log('POST /api/jobs - Received data:', req.body);
+    console.log('User from token:', req.user);
+    
     const { 
       customer_id, 
-      title, 
       description, 
-      service_type, 
       frequency, 
       price, 
       estimated_duration,
-      scheduled_date,
-      notes 
     } = req.body;
 
     // Validate required fields
-    if (!customer_id || !title || !service_type) {
+    if (!customer_id) {
       return res.status(400).json({
         success: false,
-        message: 'Customer ID, title, and service type are required'
+        message: 'customer_id is required'
+      });
+    }
+    
+    if (!description || description.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'description is required'
+      });
+    }
+    
+    if (!price || isNaN(parseFloat(price))) {
+      return res.status(400).json({
+        success: false,
+        message: 'valid price is required'
       });
     }
 
@@ -147,22 +160,20 @@ router.post('/', async (req, res) => {
       });
     }
 
+    const jobData = {
+      customer_id,
+      user_id: req.user.id, // Use authenticated user ID
+      description: description.trim(),
+      price: parseFloat(price),
+      frequency: frequency || 'monthly',
+      estimated_duration: estimated_duration ? parseInt(estimated_duration) : null
+    };
+    
+    console.log('Inserting job data:', jobData);
+
     const { data, error } = await supabase
       .from('jobs')
-      .insert({
-        customer_id,
-        user_id: req.user.id,
-        title,
-        description: description || '',
-        service_type,
-        frequency: frequency || 'one-time',
-        price: price ? parseFloat(price) : null,
-        estimated_duration: estimated_duration ? parseInt(estimated_duration) : null,
-        scheduled_date: scheduled_date || null,
-        notes: notes || '',
-        status: 'pending',
-        completed: false
-      })
+      .insert(jobData)
       .select(`
         *,
         customers:customer_id (
@@ -175,7 +186,16 @@ router.post('/', async (req, res) => {
       `)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase insert error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to create job',
+        error: error.message
+      });
+    }
+
+    console.log('Job created successfully:', data);
 
     res.status(201).json({
       success: true,
@@ -186,7 +206,7 @@ router.post('/', async (req, res) => {
     console.error('Create job error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to create job',
+      message: 'Internal server error',
       error: error.message
     });
   }

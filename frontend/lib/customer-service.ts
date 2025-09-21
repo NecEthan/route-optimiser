@@ -39,7 +39,7 @@ class CustomerService {
       }
 
       const data = await response.json();
-      return data.customers || [];
+      return data.data || [];
     } catch (error) {
       console.error('Get customers error:', error);
       throw error;
@@ -61,7 +61,7 @@ class CustomerService {
       }
 
       const data = await response.json();
-      return data.customer;
+      return data.data;
     } catch (error) {
       console.error('Get customer error:', error);
       throw error;
@@ -84,7 +84,7 @@ class CustomerService {
       }
 
       const data = await response.json();
-      return data.customer;
+      return data.data;
     } catch (error) {
       console.error('Create customer error:', error);
       throw error;
@@ -107,7 +107,7 @@ class CustomerService {
       }
 
       const data = await response.json();
-      return data.customer;
+      return data.data;
     } catch (error) {
       console.error('Update customer error:', error);
       throw error;

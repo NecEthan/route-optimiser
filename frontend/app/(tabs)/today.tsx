@@ -79,19 +79,21 @@ export default function TodayScreen() {
         
         <View style={styles.buttonContainer}>
           <Button 
-            title="Refresh Jobs" 
-            onPress={handleRefresh}
-            variant="primary"
-            size="medium"
-          />
-          
-          <Button 
             title="Add New Job" 
             onPress={handleAddJob}
             variant="outline"
             size="medium"
           />
         </View>
+        {/* <View style={[styles.buttonContainer, styles.center]}>
+          <Button 
+            title="Optimise Route" 
+            onPress={handleOptimiseRoute}
+            variant="primary"
+            size="medium"
+            length="medium"
+          />
+        </View> */}
       </View>
       
       <ScrollView 
@@ -106,15 +108,7 @@ export default function TodayScreen() {
           onJobPress={handleJobPress}
         />
         
-        <View style={[styles.buttonContainer, styles.center]}>
-          <Button 
-            title="Optimise Route" 
-            onPress={handleOptimiseRoute}
-            variant="primary"
-            size="medium"
-            length="medium"
-          />
-        </View>
+        
       </ScrollView>
 
       {/* Job Details Modal */}

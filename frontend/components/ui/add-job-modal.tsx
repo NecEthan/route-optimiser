@@ -10,15 +10,10 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { customerService, Customer } from '@/lib';
+import { buildUrl } from '@/lib/api-config';
+import { authService } from '@/lib/auth-service';
 import Button from './button';
-
-export interface Customer {
-  id: string;
-  name: string;
-  address: string;
-  phone: string;
-}
 
 export interface Job {
   id: string; // UUID
@@ -57,11 +52,6 @@ export interface AddJobModalProps {
   onJobAdded: (job: Job) => void;
 }
 
-const API_CONFIG = {
-  baseURL: 'http://localhost:3000/api',
-  timeout: 10000,
-};
-
 export default function AddJobModal({ visible, onClose, onJobAdded }: AddJobModalProps) {
   const [formData, setFormData] = useState({
     customer_id: '',
@@ -96,23 +86,17 @@ export default function AddJobModal({ visible, onClose, onJobAdded }: AddJobModa
   const fetchCustomers = async () => {
     setLoadingCustomers(true);
     try {
-      const token = await AsyncStorage.getItem('authToken');
-      const response = await fetch(`${API_CONFIG.baseURL}/customers`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      console.log('🔍 Fetching customers using customerService...');
+      
+      const customers = await customerService.getAllCustomers();
+      console.log('� Customer service response:', customers);
 
-      if (response.ok) {
-        const data = await response.json();
-        setCustomers(data);
-      } else {
-        Alert.alert('Error', 'Failed to load customers');
-      }
+      setCustomers(customers);
+      console.log('✅ Set customers:', customers.length, 'customers loaded');
     } catch (error) {
-      console.error('Error fetching customers:', error);
-      Alert.alert('Error', 'Failed to load customers');
+      console.error('💥 Error fetching customers:', error);
+      Alert.alert('Error', 'Failed to load customers. Please check your internet connection and login status.');
+      setCustomers([]);
     } finally {
       setLoadingCustomers(false);
     }
@@ -149,10 +133,6 @@ export default function AddJobModal({ visible, onClose, onJobAdded }: AddJobModa
       Alert.alert('Validation Error', 'Please select a frequency');
       return false;
     }
-    if (!formData.estimated_duration || isNaN(parseInt(formData.estimated_duration))) {
-      Alert.alert('Validation Error', 'Please enter a valid duration in minutes');
-      return false;
-    }
     return true;
   };
 
@@ -161,33 +141,35 @@ export default function AddJobModal({ visible, onClose, onJobAdded }: AddJobModa
 
     setIsCreating(true);
     try {
-      const token = await AsyncStorage.getItem('authToken');
+      const headers = await authService.getAuthHeaders();
+      
+      // Don't send user_id - backend will use authenticated user
       const jobData = {
         customer_id: formData.customer_id,
         description: formData.description.trim(),
         price: parseFloat(formData.price),
         frequency: formData.frequency,
-        estimated_duration: parseInt(formData.estimated_duration),
-        active: true,
+        estimated_duration: parseInt(formData.estimated_duration) || null,
       };
 
-      const response = await fetch(`${API_CONFIG.baseURL}/jobs`, {
+      console.log('Creating job with data:', jobData);
+
+      const response = await fetch(buildUrl('/api/jobs'), {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(jobData),
       });
 
-      if (response.ok) {
-        const newJob = await response.json();
+      console.log('Response status:', response.status);
+      const result = await response.json();
+      console.log('Server response:', result);
+
+      if (response.ok && result.success) {
         Alert.alert('Success', 'Job created successfully!');
-        onJobAdded(newJob);
+        onJobAdded(result.job);
         onClose();
       } else {
-        const errorData = await response.json();
-        Alert.alert('Error', errorData.message || 'Failed to create job');
+        Alert.alert('Error', result.message || 'Failed to create job');
       }
     } catch (error) {
       console.error('Error creating job:', error);
@@ -198,14 +180,26 @@ export default function AddJobModal({ visible, onClose, onJobAdded }: AddJobModa
   };
 
   const handleCancel = () => {
-    Alert.alert(
-      'Discard Changes?',
-      'Are you sure you want to cancel? All changes will be lost.',
-      [
-        { text: 'Keep Editing', style: 'cancel' },
-        { text: 'Discard', style: 'destructive', onPress: onClose },
-      ]
-    );
+    // Check if form has any data
+    const hasFormData = formData.customer_id || 
+                       formData.description.trim() || 
+                       formData.price || 
+                       formData.frequency || 
+                       formData.estimated_duration;
+
+    if (hasFormData) {
+      Alert.alert(
+        'Discard Changes?',
+        'Are you sure you want to cancel? All changes will be lost.',
+        [
+          { text: 'Keep Editing', style: 'cancel' },
+          { text: 'Discard', style: 'destructive', onPress: onClose },
+        ]
+      );
+    } else {
+      // No form data, close directly
+      onClose();
+    }
   };
 
   return (
@@ -220,7 +214,7 @@ export default function AddJobModal({ visible, onClose, onJobAdded }: AddJobModa
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.headerButton}
-            onPress={handleCancel}
+            onPress={onClose}
           >
             <Ionicons name="close" size={24} color="#007AFF" />
           </TouchableOpacity>
@@ -339,67 +333,67 @@ export default function AddJobModal({ visible, onClose, onJobAdded }: AddJobModa
         </View>
 
         {/* Customer Picker Modal */}
-        <Modal
-          visible={showCustomerPicker}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowCustomerPicker(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.pickerModal}>
-              <View style={styles.pickerHeader}>
-                <Text style={styles.pickerTitle}>Select Customer</Text>
+        {showCustomerPicker && (
+          <View style={styles.dropdownOverlay}>
+            <TouchableOpacity 
+              style={styles.dropdownBackdrop}
+              onPress={() => setShowCustomerPicker(false)}
+            />
+            <View style={styles.dropdownContainer}>
+              <View style={styles.dropdownHeader}>
+                <Text style={styles.dropdownTitle}>Select Customer</Text>
                 <TouchableOpacity
                   onPress={() => setShowCustomerPicker(false)}
-                  style={styles.pickerCloseButton}
+                  style={styles.dropdownCloseButton}
                 >
-                  <Ionicons name="close" size={24} color="#666" />
+                  <Ionicons name="close" size={20} color="#666" />
                 </TouchableOpacity>
               </View>
-              <ScrollView style={styles.pickerList}>
+              <ScrollView style={styles.dropdownList} showsVerticalScrollIndicator={false}>
                 {customers.map((customer) => (
                   <TouchableOpacity
                     key={customer.id}
-                    style={styles.pickerOption}
+                    style={styles.dropdownOption}
                     onPress={() => handleCustomerSelect(customer)}
                   >
-                    <Text style={styles.pickerOptionText}>{customer.name}</Text>
-                    {customer.address && (
-                      <Text style={styles.pickerOptionSubtext}>{customer.address}</Text>
-                    )}
+                    <View style={styles.customerOptionContent}>
+                      <Text style={styles.dropdownOptionText}>{customer.name}</Text>
+                      {customer.address && (
+                        <Text style={styles.dropdownOptionSubtext}>{customer.address}</Text>
+                      )}
+                    </View>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
             </View>
           </View>
-        </Modal>
+        )}
 
         {/* Frequency Picker Modal */}
-        <Modal
-          visible={showFrequencyPicker}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowFrequencyPicker(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.pickerModal}>
-              <View style={styles.pickerHeader}>
-                <Text style={styles.pickerTitle}>Select Frequency</Text>
+        {showFrequencyPicker && (
+          <View style={styles.dropdownOverlay}>
+            <TouchableOpacity 
+              style={styles.dropdownBackdrop}
+              onPress={() => setShowFrequencyPicker(false)}
+            />
+            <View style={styles.dropdownContainer}>
+              <View style={styles.dropdownHeader}>
+                <Text style={styles.dropdownTitle}>Select Frequency</Text>
                 <TouchableOpacity
                   onPress={() => setShowFrequencyPicker(false)}
-                  style={styles.pickerCloseButton}
+                  style={styles.dropdownCloseButton}
                 >
-                  <Ionicons name="close" size={24} color="#666" />
+                  <Ionicons name="close" size={20} color="#666" />
                 </TouchableOpacity>
               </View>
-              <View style={styles.pickerList}>
+              <View style={styles.dropdownList}>
                 {['weekly', 'biweekly', 'monthly', 'quarterly', 'one-time'].map((freq) => (
                   <TouchableOpacity
                     key={freq}
-                    style={styles.pickerOption}
+                    style={styles.dropdownOption}
                     onPress={() => handleFrequencySelect(freq)}
                   >
-                    <Text style={styles.pickerOptionText}>
+                    <Text style={styles.dropdownOptionText}>
                       {freq.charAt(0).toUpperCase() + freq.slice(1).replace('-', ' ')}
                     </Text>
                   </TouchableOpacity>
@@ -407,7 +401,7 @@ export default function AddJobModal({ visible, onClose, onJobAdded }: AddJobModa
               </View>
             </View>
           </View>
-        </Modal>
+        )}
       </View>
     </Modal>
   );
@@ -518,7 +512,81 @@ const styles = StyleSheet.create({
     flex: 1,
     marginBottom: 0,
   },
-  // Picker Modal Styles
+  // Compact Dropdown Styles
+  dropdownOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+  },
+  dropdownBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  dropdownContainer: {
+    position: 'absolute',
+    top: 200,
+    left: 20,
+    right: 20,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    maxHeight: 250,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  dropdownHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  dropdownTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  dropdownCloseButton: {
+    padding: 4,
+    borderRadius: 4,
+  },
+  dropdownList: {
+    maxHeight: 180,
+  },
+  dropdownOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+  },
+  customerOptionContent: {
+    flex: 1,
+  },
+  dropdownOptionText: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  dropdownOptionSubtext: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  // Legacy Picker Modal Styles (kept for backward compatibility)
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',

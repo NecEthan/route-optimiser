@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import {
   Modal,
   View,
@@ -13,6 +13,7 @@ import {
 import Button from './button';
 import { API_CONFIG } from '@/lib';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getUserId } from '@/services/sharedService';
 
 type Customer = {
   latitude: string;
@@ -40,18 +41,7 @@ export default function EditCustomerModal({
   onClose,
   onCustomerUpdated,
 }: EditCustomerModalProps) {
-
-    const getUserId = async () => {
-    try {
-        const userId = await AsyncStorage.getItem('user_id');
-        return userId;
-    } catch (error) {
-        console.error('Error getting user ID:', error);
-        return null;
-    }
-    };
-
-
+    
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -61,30 +51,35 @@ export default function EditCustomerModal({
     longitude: '',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-    userId: getUserId(),
-    // frequency: 'monthly', // need to add this 
+    userId: '',
+    frequency: 'monthly', 
   });
   const [loading, setLoading] = useState(false);
 
-  // Populate form when customer prop changes
   useEffect(() => {
-    if (customer) {
-      setFormData({
-        name: customer.name || '',
-        email: customer.email || '',
-        phone: customer.phone || '',
-        address: customer.address || '',
-        latitude: customer.latitude || '',
-        longitude: customer.longitude || '',
-        created_at: customer.created_at || new Date().toISOString(),
-        updated_at: customer.updated_at || new Date().toISOString(),
-        userId: getUserId(),
-        // frequency: customer.frequency || 'monthly',
-      });
-    }
+    const loadCustomerData = async () => {
+      if (customer) {
+        const userId = await getUserId();
+        setFormData({
+          name: customer.name || '',
+          email: customer.email || '',
+          phone: customer.phone || '',
+          address: customer.address || '',
+          latitude: customer.latitude || '',
+          longitude: customer.longitude || '',
+          created_at: customer.created_at || new Date().toISOString(),
+          updated_at: customer.updated_at || new Date().toISOString(),
+          userId: userId || '',
+          frequency: customer.frequency || 'monthly',
+        });
+      }
+    };
+    
+    loadCustomerData();
   }, [customer]);
 
-  const resetForm = () => {
+  const resetForm = async () => {
+    const userId = await getUserId();
     setFormData({
       name: '',
       email: '',
@@ -94,12 +89,13 @@ export default function EditCustomerModal({
       longitude: '',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      userId: getUserId(),
+      userId: userId || '',
+      frequency: 'monthly',
     });
   };
 
-  const handleClose = () => {
-    resetForm();
+  const handleClose = async () => {
+    await resetForm();
     onClose();
   };
 

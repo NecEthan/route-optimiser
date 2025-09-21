@@ -71,12 +71,12 @@ export default function CustomersScreen() {
            <Text style={[styles.h1, styles.heading]}>Customers</Text>
            
            <View style={styles.buttonContainer}>
-             <Button 
+             {/* <Button 
                title="Refresh" 
                onPress={handleRefresh}
                variant="secondary"
                size="medium"
-             />
+             /> */}
              <Button 
                title="Add Customer" 
                onPress={handleAddCustomer}
