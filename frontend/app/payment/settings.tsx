@@ -1,17 +1,28 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Alert, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import Button from "@/components/ui/button";
 import { Ionicons } from '@expo/vector-icons';
+import { settingsService } from '@/lib';
 
 interface PaymentMethod {
   id: string;
-  type: 'visa' | 'mastercard' | 'amex' | 'discover';
-  lastFour: string;
-  expiryMonth: number;
-  expiryYear: number;
-  isDefault: boolean;
-  holderName: string;
+  user_id: string;
+  stripe_customer_id: string;
+  stripe_subscription_id: string;
+  stripe_payment_method_id: string;
+  last_four: string;
+  card_type: string;
+  expiration_month: number;
+  expiration_year: number;
+  bank_name?: string | null;
+  subscription_price: number;
+  subscription_start_date: string;
+  billing_cycle: string;
+  subscription_type: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface BillingHistoryItem {
@@ -26,29 +37,70 @@ interface BillingHistoryItem {
 export default function PaymentSettingsScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+
+useEffect(() => {
+  
+  fetchSubscription();
+}, []);
+
+const fetchSubscription = async () => {
+    try {
+      const response = await settingsService.getUserSubscription();
+      console.log('User subscription data:', response);
+      
+      if (response.success && response.data) {
+        // Convert the single subscription to the payment methods array format
+        setPaymentMethods([response.data]);
+      } else {
+        // No subscription found, use empty array
+        setPaymentMethods([]);
+      }
+    } catch (error) {
+      console.error('Error fetching user subscription:', error);
+      // Keep mock data on error for now
+    }
+  };
   
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
     {
       id: '1',
-      type: 'visa',
-      lastFour: '4242',
-      expiryMonth: 12,
-      expiryYear: 2025,
-      isDefault: true,
-      holderName: 'John Doe'
+      user_id: 'mock-user-id',
+      stripe_customer_id: 'cus_mock_001',
+      stripe_subscription_id: 'sub_mock_001',
+      stripe_payment_method_id: 'pm_mock_001',
+      last_four: '4242',
+      card_type: 'visa',
+      expiration_month: 12,
+      expiration_year: 2025,
+      bank_name: null,
+      subscription_price: 9.99,
+      subscription_start_date: '2025-01-01',
+      billing_cycle: 'monthly',
+      subscription_type: 'basic',
+      status: 'active',
+      created_at: '2025-01-01T00:00:00Z',
+      updated_at: '2025-01-01T00:00:00Z'
     },
     {
       id: '2',
-      type: 'mastercard',
-      lastFour: '5555',
-      expiryMonth: 8,
-      expiryYear: 2026,
-      isDefault: false,
-      holderName: 'John Doe'
+      user_id: 'mock-user-id',
+      stripe_customer_id: 'cus_mock_002',
+      stripe_subscription_id: 'sub_mock_002', 
+      stripe_payment_method_id: 'pm_mock_002',
+      last_four: '5555',
+      card_type: 'mastercard',
+      expiration_month: 8,
+      expiration_year: 2026,
+      bank_name: null,
+      subscription_price: 9.99,
+      subscription_start_date: '2025-02-01',
+      billing_cycle: 'monthly',
+      subscription_type: 'basic',
+      status: 'active',
+      created_at: '2025-02-01T00:00:00Z',
+      updated_at: '2025-02-01T00:00:00Z'
     }
-  ]);
-
-  const [billingHistory] = useState<BillingHistoryItem[]>([
+  ]);  const [billingHistory] = useState<BillingHistoryItem[]>([
     {
       id: '1',
       date: '2025-09-01',
@@ -75,8 +127,8 @@ export default function PaymentSettingsScreen() {
     }
   ]);
 
-  const getCardIcon = (type: PaymentMethod['type']) => {
-    switch (type) {
+  const getCardIcon = (cardType: string) => {
+    switch (cardType.toLowerCase()) {
       case 'visa':
         return 'card';
       case 'mastercard':
@@ -90,8 +142,8 @@ export default function PaymentSettingsScreen() {
     }
   };
 
-  const getCardName = (type: PaymentMethod['type']) => {
-    switch (type) {
+  const getCardName = (cardType: string) => {
+    switch (cardType.toLowerCase()) {
       case 'visa':
         return 'Visa';
       case 'mastercard':
@@ -110,7 +162,7 @@ export default function PaymentSettingsScreen() {
   };
 
   const handleUpdateCard = (cardId: string) => {
-    Alert.alert('Update Card', `This would open an update form for card ending in ${paymentMethods.find(p => p.id === cardId)?.lastFour}`);
+    Alert.alert('Update Card', `This would open an update form for card ending in ${paymentMethods.find(p => p.id === cardId)?.last_four}`);
   };
 
   const handleSetDefaultCard = async (cardId: string) => {
@@ -119,12 +171,8 @@ export default function PaymentSettingsScreen() {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      setPaymentMethods(prev => 
-        prev.map(method => ({
-          ...method,
-          isDefault: method.id === cardId
-        }))
-      );
+      // For subscription model, there's typically only one active subscription
+      // But we can still mark it as the primary one
       
       Alert.alert('Success', 'Default payment method updated!');
     } catch (error) {
@@ -137,22 +185,19 @@ export default function PaymentSettingsScreen() {
 
   const handleRemoveCard = (cardId: string) => {
     const card = paymentMethods.find(p => p.id === cardId);
-    if (card?.isDefault && paymentMethods.length > 1) {
-      Alert.alert('Error', 'Cannot remove default payment method. Please set another card as default first.');
-      return;
-    }
-
+    
     Alert.alert(
-      'Remove Payment Method',
-      `Are you sure you want to remove the card ending in ${card?.lastFour}?`,
+      'Cancel Subscription',
+      `Are you sure you want to cancel your subscription with card ending in ${card?.last_four}? This will end your subscription.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Remove',
+          text: 'Cancel Subscription',
           style: 'destructive',
           onPress: () => {
+            // In real app, this would cancel the Stripe subscription
             setPaymentMethods(prev => prev.filter(method => method.id !== cardId));
-            Alert.alert('Success', 'Payment method removed.');
+            Alert.alert('Success', 'Subscription cancelled.');
           }
         }
       ]
@@ -217,18 +262,18 @@ export default function PaymentSettingsScreen() {
             <View key={method.id} style={styles.paymentMethodCard}>
               <View style={styles.cardHeader}>
                 <View style={styles.cardInfo}>
-                  <Ionicons name={getCardIcon(method.type)} size={24} color="#007AFF" />
+                  <Ionicons name="card" size={24} color="#007AFF" />
                   <View style={styles.cardDetails}>
-                    <Text style={styles.cardType}>{getCardName(method.type)}</Text>
-                    <Text style={styles.cardNumber}>•••• •••• •••• {method.lastFour}</Text>
+                    <Text style={styles.cardType}>{getCardName(method.card_type)}</Text>
+                    <Text style={styles.cardNumber}>•••• •••• •••• {method.last_four}</Text>
                     <Text style={styles.cardExpiry}>
-                      Expires {method.expiryMonth.toString().padStart(2, '0')}/{method.expiryYear}
+                      Expires {method.expiration_month.toString().padStart(2, '0')}/{method.expiration_year}
                     </Text>
                   </View>
                 </View>
-                {method.isDefault && (
+                {method.status === 'active' && (
                   <View style={styles.defaultBadge}>
-                    <Text style={styles.defaultBadgeText}>Default</Text>
+                    <Text style={styles.defaultBadgeText}>Active</Text>
                   </View>
                 )}
               </View>
@@ -241,16 +286,14 @@ export default function PaymentSettingsScreen() {
                   size="small"
                 />
                 
-                {!method.isDefault && (
-                  <Button
-                    title="Set as Default"
-                    onPress={() => handleSetDefaultCard(method.id)}
-                    variant="outline"
-                    size="small"
-                    loading={loading}
-                    disabled={loading}
-                  />
-                )}
+                <Button
+                  title="Update Billing"
+                  onPress={() => handleSetDefaultCard(method.id)}
+                  variant="outline"
+                  size="small"
+                  loading={loading}
+                  disabled={loading}
+                />
                 
                 <TouchableOpacity
                   onPress={() => handleRemoveCard(method.id)}
@@ -272,18 +315,38 @@ export default function PaymentSettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Billing Information</Text>
           <View style={styles.billingInfoCard}>
-            <View style={styles.billingRow}>
-              <Text style={styles.billingLabel}>Next billing date:</Text>
-              <Text style={styles.billingValue}>Dec 20, 2025</Text>
-            </View>
-            <View style={styles.billingRow}>
-              <Text style={styles.billingLabel}>Billing cycle:</Text>
-              <Text style={styles.billingValue}>Monthly</Text>
-            </View>
-            <View style={styles.billingRow}>
-              <Text style={styles.billingLabel}>Current amount:</Text>
-              <Text style={styles.billingValue}>$9.99/month</Text>
-            </View>
+            {paymentMethods.length > 0 && (
+              <>
+                <View style={styles.billingRow}>
+                  <Text style={styles.billingLabel}>Subscription:</Text>
+                  <Text style={styles.billingValue}>{paymentMethods[0].subscription_type.charAt(0).toUpperCase() + paymentMethods[0].subscription_type.slice(1)} Plan</Text>
+                </View>
+                <View style={styles.billingRow}>
+                  <Text style={styles.billingLabel}>Billing cycle:</Text>
+                  <Text style={styles.billingValue}>{paymentMethods[0].billing_cycle.charAt(0).toUpperCase() + paymentMethods[0].billing_cycle.slice(1)}</Text>
+                </View>
+                <View style={styles.billingRow}>
+                  <Text style={styles.billingLabel}>Amount:</Text>
+                  <Text style={styles.billingValue}>${paymentMethods[0].subscription_price}/{paymentMethods[0].billing_cycle}</Text>
+                </View>
+                <View style={styles.billingRow}>
+                  <Text style={styles.billingLabel}>Started:</Text>
+                  <Text style={styles.billingValue}>{formatDate(paymentMethods[0].subscription_start_date)}</Text>
+                </View>
+                <View style={styles.billingRow}>
+                  <Text style={styles.billingLabel}>Status:</Text>
+                  <Text style={[styles.billingValue, { color: paymentMethods[0].status === 'active' ? '#28a745' : '#dc3545' }]}>
+                    {paymentMethods[0].status.charAt(0).toUpperCase() + paymentMethods[0].status.slice(1)}
+                  </Text>
+                </View>
+              </>
+            )}
+            {paymentMethods.length === 0 && (
+              <View style={styles.billingRow}>
+                <Text style={styles.billingLabel}>No active subscription</Text>
+                <Text style={styles.billingValue}>-</Text>
+              </View>
+            )}
           </View>
         </View>
 

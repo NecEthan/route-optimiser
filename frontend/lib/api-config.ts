@@ -1,6 +1,6 @@
 export const API_CONFIG = {
-  BASE_URL: 'http://192.168.68.107:3000',
-//   BASE_URL: 'http://localhost:3000',
+//   BASE_URL: 'http://192.168.68.107:3000',
+  BASE_URL: 'http://localhost:3000',
   ENDPOINTS: {
     LOGIN: '/api/auth/login',
     

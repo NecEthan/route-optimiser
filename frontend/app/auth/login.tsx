@@ -13,7 +13,8 @@ export default function LoginScreen() {
       Alert.alert('Error', 'Please enter email and password');
       return;
     }
-
+    console.log('Attempting login with email:', email);
+    console.log('Password:', password ? '******' : 'empty');
     setIsLoading(true);
     try {
       const result = await authService.login({ email, password });
