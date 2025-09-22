@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_CONFIG } from "@/lib";
 import { useFocusEffect } from '@react-navigation/native';
+import AddExpenseModal from '@/components/ui/add-expense-modal';
 
 type TabType = 'income' | 'expenses' | 'profit';
 
@@ -50,6 +51,7 @@ export default function AccountingScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
 
   useEffect(() => {
     fetchExpenses();
@@ -145,6 +147,11 @@ export default function AccountingScreen() {
       fetchPayments(true),
       fetchExpenses(true)
     ]);
+  };
+
+  const handleExpenseAdded = () => {
+    console.log('💰 Expense added - refreshing data...');
+    handleRefresh();
   };
 
 
@@ -266,18 +273,27 @@ export default function AccountingScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Accounting</Text>
-        <TouchableOpacity 
-          style={styles.refreshButton}
-          onPress={handleRefresh}
-          disabled={refreshing}
-        >
-          <Ionicons 
-            name="refresh" 
-            size={20} 
-            color={refreshing ? "#999" : "#007AFF"} 
-            style={refreshing ? styles.spinning : undefined}
-          />
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity 
+            style={styles.refreshButton}
+            onPress={handleRefresh}
+            disabled={refreshing}
+          >
+            <Ionicons 
+              name="refresh" 
+              size={20} 
+              color={refreshing ? "#999" : "#007AFF"} 
+              style={refreshing ? styles.spinning : undefined}
+            />
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => setShowAddExpenseModal(true)}
+          >
+            <Ionicons name="add" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Tab Navigation */}
@@ -415,6 +431,13 @@ export default function AccountingScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Add Expense Modal */}
+      <AddExpenseModal
+        visible={showAddExpenseModal}
+        onClose={() => setShowAddExpenseModal(false)}
+        onExpenseAdded={handleExpenseAdded}
+      />
     </SafeAreaView>
   );
 }
@@ -438,10 +461,24 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   refreshButton: {
     padding: 8,
     borderRadius: 20,
     backgroundColor: '#f0f8ff',
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addButton: {
+    backgroundColor: '#007AFF',
+    padding: 8,
+    borderRadius: 20,
     width: 36,
     height: 36,
     alignItems: 'center',
