@@ -42,6 +42,7 @@ router.get('/', async (req, res) => {
     const { data, error } = await supabase
       .from('customers')
       .select('*')
+      .eq('user_id', req.user.id)
       .order('name');
 
     if (error) {
@@ -71,6 +72,7 @@ router.get('/:id', async (req, res) => {
       .from('customers')
       .select('*')
       .eq('id', req.params.id)
+      .eq('user_id', req.user.id)
       .single();
 
     if (error) {
@@ -276,7 +278,8 @@ router.delete('/:id', async (req, res) => {
     const { error } = await supabase
       .from('customers')
       .delete()
-      .eq('id', req.params.id);
+      .eq('id', req.params.id)
+      .eq('user_id', req.user.id);
 
     if (error) throw error;
 

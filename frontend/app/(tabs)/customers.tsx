@@ -2,7 +2,7 @@ import React, { useState, useRef } from "react";
 import { SafeAreaView, View, StyleSheet, Text, ScrollView } from "react-native";
 import Button from "@/components/ui/button";
 import CustomerList from "@/components/ui/customer-list";
-import AddCustomerModal from "@/components/ui/add-customer-modal";
+import AddJobModal from "@/components/ui/add-job-modal";
 import CustomerDetailsModal from "@/components/ui/customer-details-modal";
 import EditCustomerModal from "@/components/ui/edit-customer-modal";
 
@@ -110,7 +110,7 @@ export default function CustomersScreen() {
            </View> */}
          </ScrollView>
 
-         <AddCustomerModal
+         <AddJobModal
            visible={showAddModal}
            onClose={() => setShowAddModal(false)}
            onCustomerAdded={handleCustomerAdded}

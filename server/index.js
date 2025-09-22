@@ -124,7 +124,22 @@ app.use((req, res) => {
 });
 
 app.listen(port, '0.0.0.0', () => {
+  const os = require('os');
+  const interfaces = os.networkInterfaces();
+  let localIP = 'localhost';
+  
+  // Find the first non-internal IPv4 address
+  for (const name of Object.keys(interfaces)) {
+    for (const interface of interfaces[name]) {
+      if (interface.family === 'IPv4' && !interface.internal) {
+        localIP = interface.address;
+        break;
+      }
+    }
+    if (localIP !== 'localhost') break;
+  }
+  
   console.log(`🚀 Server running on http://localhost:${port}`);
-  console.log(`📱 Mobile access: http://192.168.0.79:${port}`);
+  console.log(`📱 Mobile access: http://${localIP}:${port}`);
   console.log(`🔐 Register: http://localhost:${port}/api/auth/register`);
 });
