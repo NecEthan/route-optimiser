@@ -231,6 +231,7 @@ app.get('/health', async (req, res) => {
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/user', require('./routes/user'));
 app.use('/api/customers', require('./routes/customers'));
 app.use('/api/routes', require('./routes/routes'));
 app.use('/api/accounting', require('./routes/accounting'));
@@ -244,6 +245,8 @@ app.get('/', (req, res) => {
       'GET /health - Health check',
       'POST /api/auth/register - Register user',
       'POST /api/auth/login - Login user',
+      'GET /api/user/subscription - Get user subscription (protected)',
+      'GET /api/user/profile - Get user profile (protected)',
       'GET /api/customers - Get customers (protected)',
       'GET /api/routes - Route optimization (protected)',
       'GET /api/accounting - Get accounting data (protected)',
