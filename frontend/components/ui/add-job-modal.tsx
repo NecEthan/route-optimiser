@@ -34,7 +34,6 @@ export default function AddJobModal({ visible, onClose, onCustomerAdded }: AddCu
     exterior_windows: true,
     interior_windows: false,
     gutters: false,
-    soffits: false,
     fascias: false,
     payment_status: true,
   });
@@ -56,7 +55,6 @@ export default function AddJobModal({ visible, onClose, onCustomerAdded }: AddCu
         exterior_windows: true,
         interior_windows: false,
         gutters: false,
-        soffits: false,
         fascias: false,
         payment_status: true,
       });
@@ -112,7 +110,6 @@ export default function AddJobModal({ visible, onClose, onCustomerAdded }: AddCu
         exterior_windows: formData.exterior_windows,
         interior_windows: formData.interior_windows,
         gutters: formData.gutters,
-        soffits: formData.soffits,
         fascias: formData.fascias,
         status: true, // Active by default
       };

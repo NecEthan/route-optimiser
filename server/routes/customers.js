@@ -117,11 +117,8 @@ router.post('/', async (req, res) => {
       exterior_windows,
       interior_windows,
       gutters,
-      soffits,
       fascias,
       status,
-      latitude, 
-      longitude 
     } = req.body;
 
     if (!name || !address || !description || price === undefined) {
@@ -144,7 +141,6 @@ router.post('/', async (req, res) => {
       exterior_windows: exterior_windows || false,
       interior_windows: interior_windows || false,
       gutters: gutters || false,
-      soffits: soffits || false,
       fascias: fascias || false,
       status: status !== undefined ? status : true, // Default to active
       user_id: req.user.id, // Use authenticated user ID
@@ -205,7 +201,6 @@ router.put('/:id', async (req, res) => {
       exterior_windows,
       interior_windows,
       gutters,
-      soffits,
       fascias,
       status
     } = req.body;
@@ -234,7 +229,6 @@ router.put('/:id', async (req, res) => {
     if (exterior_windows !== undefined) updateData.exterior_windows = exterior_windows;
     if (interior_windows !== undefined) updateData.interior_windows = interior_windows;
     if (gutters !== undefined) updateData.gutters = gutters;
-    if (soffits !== undefined) updateData.soffits = soffits;
     if (fascias !== undefined) updateData.fascias = fascias;
 
     console.log('Filtered update data:', updateData);
@@ -293,7 +287,6 @@ router.patch('/:id', async (req, res) => {
       exterior_windows,
       interior_windows,
       gutters,
-      soffits,
       fascias,
       status
     } = req.body;
@@ -318,7 +311,6 @@ router.patch('/:id', async (req, res) => {
     if (exterior_windows !== undefined) updateData.exterior_windows = exterior_windows;
     if (interior_windows !== undefined) updateData.interior_windows = interior_windows;
     if (gutters !== undefined) updateData.gutters = gutters;
-    if (soffits !== undefined) updateData.soffits = soffits;
     if (fascias !== undefined) updateData.fascias = fascias;
 
     console.log('PATCH filtered update data:', updateData);

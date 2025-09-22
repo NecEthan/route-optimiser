@@ -98,7 +98,6 @@ export default function Job({ job, onToggle, onCashToggle, onEdit, onPress, onCo
           {job.exterior_windows && <Text style={styles.serviceTag}>🪟 Exterior</Text>}
           {job.interior_windows && <Text style={styles.serviceTag}>🏠 Interior</Text>}
           {job.gutters && <Text style={styles.serviceTag}>🌊 Gutters</Text>}
-          {job.soffits && <Text style={styles.serviceTag}>🏗️ Soffits</Text>}
           {job.fascias && <Text style={styles.serviceTag}>🏠 Fascias</Text>}
         </View>
       </View>

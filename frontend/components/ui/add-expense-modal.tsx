@@ -341,6 +341,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderWidth: 1,
     borderColor: '#e0e0e0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   textAreaContainer: {
     alignItems: 'flex-start',
@@ -363,6 +368,8 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#333',
+    outlineWidth: 0, // Remove web focus outline
+    borderWidth: 0, // Remove any border
   },
   amountInput: {
     textAlign: 'left',

@@ -19,7 +19,6 @@ export interface Customer {
   exterior_windows?: boolean;
   interior_windows?: boolean;
   gutters?: boolean;
-  soffits?: boolean;
   fascias?: boolean;
   status?: boolean; // Based on your schema (fix the syntax error: status BOOLEAN)
   
@@ -47,7 +46,6 @@ export interface CreateCustomerRequest {
   exterior_windows?: boolean;
   interior_windows?: boolean;
   gutters?: boolean;
-  soffits?: boolean;
   fascias?: boolean;
 }
 

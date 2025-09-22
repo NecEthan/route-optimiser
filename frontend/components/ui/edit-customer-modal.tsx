@@ -32,7 +32,6 @@ type Customer = {
   exterior_windows: boolean;
   interior_windows: boolean;
   gutters: boolean;
-  soffits: boolean;
   fascias: boolean;
   status: boolean;
   created_at?: string;
@@ -66,7 +65,6 @@ export default function EditCustomerModal({
     exterior_windows: false,
     interior_windows: false,
     gutters: false,
-    soffits: false,
     fascias: false,
     status: true,
   });
@@ -89,7 +87,6 @@ export default function EditCustomerModal({
           exterior_windows: customer.exterior_windows || false,
           interior_windows: customer.interior_windows || false,
           gutters: customer.gutters || false,
-          soffits: customer.soffits || false,
           fascias: customer.fascias || false,
           status: customer.status !== undefined ? customer.status : true,
         });
@@ -113,7 +110,6 @@ export default function EditCustomerModal({
       exterior_windows: false,
       interior_windows: false,
       gutters: false,
-      soffits: false,
       fascias: false,
       status: true,
     });
@@ -169,7 +165,6 @@ export default function EditCustomerModal({
         exterior_windows: formData.exterior_windows,
         interior_windows: formData.interior_windows,
         gutters: formData.gutters,
-        soffits: formData.soffits,
         fascias: formData.fascias,
         status: formData.status,
       };
@@ -365,16 +360,6 @@ export default function EditCustomerModal({
                   onValueChange={(value) => setFormData({ ...formData, gutters: value })}
                   trackColor={{ false: '#e0e0e0', true: '#007AFF' }}
                   thumbColor={formData.gutters ? '#fff' : '#f4f3f4'}
-                />
-              </View>
-
-              <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>Soffits</Text>
-                <Switch
-                  value={formData.soffits}
-                  onValueChange={(value) => setFormData({ ...formData, soffits: value })}
-                  trackColor={{ false: '#e0e0e0', true: '#007AFF' }}
-                  thumbColor={formData.soffits ? '#fff' : '#f4f3f4'}
                 />
               </View>
 
