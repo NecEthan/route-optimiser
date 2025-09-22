@@ -246,6 +246,7 @@ app.get('/', (req, res) => {
       'POST /api/auth/register - Register user',
       'POST /api/auth/login - Login user',
       'GET /api/user/subscription - Get user subscription (protected)',
+      'DELETE /api/user/subscription/:id - Cancel user subscription (protected)',
       'GET /api/user/profile - Get user profile (protected)',
       'GET /api/customers - Get customers (protected)',
       'GET /api/routes - Route optimization (protected)',
