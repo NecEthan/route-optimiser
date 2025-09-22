@@ -21,18 +21,19 @@ interface Transaction {
 interface Payment {
   id: string;
   amount: number;
-  payment_date: string;
+  status: string; // 'pending', 'sent', 'paid', 'overdue'
   method: string;
   notes?: string;
   customer_id?: string;
+  invoice_number?: string;
+  due_date?: string;
+  sent_at?: string;
+  paid_at?: string;
+  created_at: string;
   customers?: {
     name: string;
     email?: string;
     phone?: string;
-  };
-  jobs?: {
-    description: string;
-    address?: string;
   };
 }
 
@@ -166,16 +167,18 @@ export default function AccountingScreen() {
   }));
 
   // Convert API payments to Transaction format for display (income)
-  const incomeTransactions: Transaction[] = payments.map(payment => ({
-    id: payment.id,
-    date: payment.payment_date,
-    description: payment.customers?.name 
-      ? `Payment from ${payment.customers.name}${payment.jobs?.description ? ` - ${payment.jobs.description}` : ''}` 
-      : payment.notes || `${payment.method} payment`,
-    amount: typeof payment.amount === 'string' ? parseFloat(payment.amount) : payment.amount,
-    type: 'income' as const,
-    category: payment.method || 'cash'
-  }));
+  const incomeTransactions: Transaction[] = payments
+    .filter(payment => payment.status === 'paid') // Only show paid payments as income
+    .map(payment => ({
+      id: payment.id,
+      date: payment.paid_at || payment.created_at,
+      description: payment.customers?.name 
+        ? `Payment from ${payment.customers.name}` 
+        : payment.notes || `${payment.method} payment`,
+      amount: typeof payment.amount === 'string' ? parseFloat(payment.amount) : payment.amount,
+      type: 'income' as const,
+      category: payment.method || 'cash'
+    }));
 
   console.log("Fetched expenses:", expenseTransactions);
   console.log("Fetched income payments:", incomeTransactions);

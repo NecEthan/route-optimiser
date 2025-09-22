@@ -640,6 +640,10 @@ router.put('/payments/:id', async (req, res) => {
           email,
           phone
         ),
+        jobs:job_id (
+          id,
+          description,
+          address
         )
       `)
       .single();
@@ -708,6 +712,10 @@ router.patch('/payments/:id/status', async (req, res) => {
           email,
           phone
         ),
+        jobs:job_id (
+          id,
+          description,
+          address
         )
       `)
       .single();

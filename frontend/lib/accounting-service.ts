@@ -17,6 +17,7 @@ class AccountingService {
           customer_id: paymentData.customer_id,
           amount: paymentData.amount,
           method: paymentData.method || 'cash',
+          status: paymentData.status || 'pending',
           notes: paymentData.notes || ''
         })
         });

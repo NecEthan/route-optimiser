@@ -232,7 +232,8 @@ export default function JobDetailsModal({
       await accountingService.addPayment({
         customer_id: job.id, // Use customer's own ID since we're now customer-centric
         amount: job.price,
-        method: cashPaymentStatus ? 'cash' : 'pending', // Set method based on checkbox
+        method: cashPaymentStatus ? 'cash' : 'bank', // Set proper payment method
+        status: cashPaymentStatus ? 'paid' : 'pending', // Set payment status
         notes: `Payment for: ${job.description || job.name}`
       });
       console.log(`✅ Payment created with status: ${cashPaymentStatus ? 'paid' : 'pending'}`);
