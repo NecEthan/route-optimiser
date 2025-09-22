@@ -10,106 +10,58 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { customerService, Customer } from '@/lib';
+import { Customer } from '@/lib';
 import { buildUrl } from '@/lib/api-config';
 import { authService } from '@/lib/auth-service';
 import Button from './button';
 
-export interface Job {
-  id: string; // UUID
-  customer_id?: string; // UUID foreign key
-  user_id?: string; // UUID foreign key
-  description: string; // text not null
-  price: number; // numeric(10,2) not null
-  frequency?: string; // character varying(50), default 'monthly'
-  last_completed?: string; // date
-  estimated_duration?: number | null; // integer (minutes)
-  active?: boolean; // boolean, default true
-  created_at?: string; // timestamp with time zone
-  updated_at?: string; // timestamp with time zone
-  payment_status: string; // text not null - 'pending', 'paid', 'overdue', etc.
-  // Customer information from join
-  customers?: {
-    id: string;
-    name: string;
-    email?: string;
-    phone?: string;
-    address: string;
-  };
-  // Legacy fields for backward compatibility
-  name?: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  service_frequency?: string;
-  notes?: string;
-  completed?: boolean;
-  completed_at?: string;
-}
-
-export interface AddJobModalProps {
+export interface AddCustomerModalProps {
   visible: boolean;
   onClose: () => void;
-  onJobAdded: (job: Job) => void;
+  onCustomerAdded: (customer: Customer) => void;
 }
 
-export default function AddJobModal({ visible, onClose, onJobAdded }: AddJobModalProps) {
+export default function AddJobModal({ visible, onClose, onCustomerAdded }: AddCustomerModalProps) {
   const [formData, setFormData] = useState({
-    customer_id: '',
-    customerName: '',
+    name: '',
+    email: '',
+    phone: '',
     description: '',
+    address: '',
     price: '',
     frequency: '',
     estimated_duration: '',
+    exterior_windows: true,
+    interior_windows: false,
+    gutters: false,
+    soffits: false,
+    fascias: false,
+    payment_status: true,
   });
   
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const [showCustomerPicker, setShowCustomerPicker] = useState(false);
   const [showFrequencyPicker, setShowFrequencyPicker] = useState(false);
 
   useEffect(() => {
     if (visible) {
-      fetchCustomers();
       setFormData({
-        customer_id: '',
-        customerName: '',
+        name: '',
+        email: '',
+        phone: '',
         description: '',
+        address: '',
         price: '',
         frequency: '',
         estimated_duration: '',
+        exterior_windows: true,
+        interior_windows: false,
+        gutters: false,
+        soffits: false,
+        fascias: false,
+        payment_status: true,
       });
     }
   }, [visible]);
-
-  const fetchCustomers = async () => {
-    setLoadingCustomers(true);
-    try {
-      console.log('🔍 Fetching customers using customerService...');
-      
-      const customers = await customerService.getAllCustomers();
-      console.log('� Customer service response:', customers);
-
-      setCustomers(customers);
-      console.log('✅ Set customers:', customers.length, 'customers loaded');
-    } catch (error) {
-      console.error('💥 Error fetching customers:', error);
-      Alert.alert('Error', 'Failed to load customers. Please check your internet connection and login status.');
-      setCustomers([]);
-    } finally {
-      setLoadingCustomers(false);
-    }
-  };
-
-  const handleCustomerSelect = (customer: Customer) => {
-    setFormData(prev => ({ 
-      ...prev, 
-      customer_id: customer.id,
-      customerName: customer.name
-    }));
-    setShowCustomerPicker(false);
-  };
 
   const handleFrequencySelect = (frequency: string) => {
     setFormData(prev => ({ ...prev, frequency }));
@@ -117,12 +69,16 @@ export default function AddJobModal({ visible, onClose, onJobAdded }: AddJobModa
   };
 
   const validateForm = () => {
-    if (!formData.customer_id) {
-      Alert.alert('Validation Error', 'Please select a customer');
+    if (!formData.name.trim()) {
+      Alert.alert('Validation Error', 'Please enter customer name');
       return false;
     }
     if (!formData.description.trim()) {
-      Alert.alert('Validation Error', 'Please enter a job description');
+      Alert.alert('Validation Error', 'Please enter a service description');
+      return false;
+    }
+    if (!formData.address.trim()) {
+      Alert.alert('Validation Error', 'Please enter customer address');
       return false;
     }
     if (!formData.price || isNaN(parseFloat(formData.price))) {
@@ -136,30 +92,35 @@ export default function AddJobModal({ visible, onClose, onJobAdded }: AddJobModa
     return true;
   };
 
-  const handleCreateJob = async () => {
+  const handleCreateCustomer = async () => {
     if (!validateForm()) return;
 
     setIsCreating(true);
     try {
       const headers = await authService.getAuthHeaders();
       
-      const jobData = {
-        customer_id: formData.customer_id,
+      const customerData = {
+        name: formData.name.trim(),
+        email: formData.email.trim() || null,
+        phone: formData.phone.trim() || null,
         description: formData.description.trim(),
+        address: formData.address.trim(),
         price: parseFloat(formData.price),
         frequency: formData.frequency,
         estimated_duration: parseInt(formData.estimated_duration) || null,
-        payment_status: 'pending',
-        active: true,
-        // user_id will be set by the backend from the authenticated user
-        // id, created_at, updated_at will be set by the database
-        // last_completed defaults to null for new jobs
+        payment_status: formData.payment_status,
+        exterior_windows: formData.exterior_windows,
+        interior_windows: formData.interior_windows,
+        gutters: formData.gutters,
+        soffits: formData.soffits,
+        fascias: formData.fascias,
+        status: true, // Active by default
       };
 
-      const response = await fetch(buildUrl('/api/jobs'), {
+      const response = await fetch(buildUrl('/api/customers'), {
         method: 'POST',
         headers,
-        body: JSON.stringify(jobData),
+        body: JSON.stringify(customerData),
       });
 
       console.log('Response status:', response.status);
@@ -167,15 +128,15 @@ export default function AddJobModal({ visible, onClose, onJobAdded }: AddJobModa
       console.log('Server response:', result);
 
       if (response.ok && result.success) {
-        Alert.alert('Success', 'Job created successfully!');
-        onJobAdded(result.job);
+        Alert.alert('Success', 'Customer created successfully!');
+        onCustomerAdded(result.customer);
         onClose();
       } else {
-        Alert.alert('Error', result.message || 'Failed to create job');
+        Alert.alert('Error', result.message || 'Failed to create customer');
       }
     } catch (error) {
-      console.error('Error creating job:', error);
-      Alert.alert('Error', 'Failed to create job');
+      console.error('Error creating customer:', error);
+      Alert.alert('Error', 'Failed to create customer');
     } finally {
       setIsCreating(false);
     }
@@ -183,8 +144,11 @@ export default function AddJobModal({ visible, onClose, onJobAdded }: AddJobModa
 
   const handleCancel = () => {
     // Check if form has any data
-    const hasFormData = formData.customer_id || 
+    const hasFormData = formData.name.trim() || 
+                       formData.email.trim() || 
+                       formData.phone.trim() || 
                        formData.description.trim() || 
+                       formData.address.trim() || 
                        formData.price || 
                        formData.frequency || 
                        formData.estimated_duration;
@@ -221,54 +185,72 @@ export default function AddJobModal({ visible, onClose, onJobAdded }: AddJobModa
             <Ionicons name="close" size={24} color="#007AFF" />
           </TouchableOpacity>
           
-          <Text style={styles.title}>Add New Job</Text>
+          <Text style={styles.title}>Add New Customer</Text>
           
           <View style={styles.headerButton} />
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.formContainer}>
-            {/* Customer Selection */}
+            {/* Customer Name */}
             <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Select Customer</Text>
-              {loadingCustomers ? (
-                <Text style={styles.loadingText}>Loading customers...</Text>
-              ) : (
-                <TouchableOpacity 
-                  style={styles.pickerButton}
-                  onPress={() => setShowCustomerPicker(true)}
-                >
-                  <Text style={[styles.pickerText, !formData.customerName && styles.placeholderText]}>
-                    {formData.customerName || 'Choose a customer...'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color="#666" />
-                </TouchableOpacity>
-              )}
-              
-              {formData.customer_id && (
-                <View style={styles.customerPreview}>
-                  {customers.find(c => c.id === formData.customer_id)?.address && (
-                    <Text style={styles.customerPreviewText}>
-                      📍 {customers.find(c => c.id === formData.customer_id)?.address}
-                    </Text>
-                  )}
-                  {customers.find(c => c.id === formData.customer_id)?.phone && (
-                    <Text style={styles.customerPreviewText}>
-                      📞 {customers.find(c => c.id === formData.customer_id)?.phone}
-                    </Text>
-                  )}
-                </View>
-              )}
+              <Text style={styles.label}>Customer Name</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.name}
+                onChangeText={(text) => setFormData(prev => ({ ...prev, name: text }))}
+                placeholder="Enter customer name..."
+                autoCapitalize="words"
+              />
             </View>
 
-            {/* Job Description */}
+            {/* Email */}
             <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Job Description</Text>
+              <Text style={styles.label}>Email (Optional)</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.email}
+                onChangeText={(text) => setFormData(prev => ({ ...prev, email: text }))}
+                placeholder="customer@example.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+
+            {/* Phone */}
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Phone (Optional)</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.phone}
+                onChangeText={(text) => setFormData(prev => ({ ...prev, phone: text }))}
+                placeholder="Enter phone number..."
+                keyboardType="phone-pad"
+              />
+            </View>
+
+            {/* Address */}
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Address</Text>
+              <TextInput
+                style={[styles.input, styles.multilineInput]}
+                value={formData.address}
+                onChangeText={(text) => setFormData(prev => ({ ...prev, address: text }))}
+                placeholder="Enter customer address..."
+                multiline
+                numberOfLines={2}
+                textAlignVertical="top"
+              />
+            </View>
+
+            {/* Service Description */}
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Service Description</Text>
               <TextInput
                 style={[styles.input, styles.multilineInput]}
                 value={formData.description}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
-                placeholder="Enter job description..."
+                placeholder="Describe the service to be provided..."
                 multiline
                 numberOfLines={3}
                 textAlignVertical="top"
@@ -325,51 +307,14 @@ export default function AddJobModal({ visible, onClose, onJobAdded }: AddJobModa
             style={styles.footerButton}
           />
           <Button
-            title={isCreating ? "Creating..." : "Create Job"}
-            onPress={handleCreateJob}
+            title={isCreating ? "Creating..." : "Create Customer"}
+            onPress={handleCreateCustomer}
             variant="primary"
             size="large"
             style={styles.footerButton}
             disabled={isCreating}
           />
         </View>
-
-        {/* Customer Picker Modal */}
-        {showCustomerPicker && (
-          <View style={styles.dropdownOverlay}>
-            <TouchableOpacity 
-              style={styles.dropdownBackdrop}
-              onPress={() => setShowCustomerPicker(false)}
-            />
-            <View style={styles.dropdownContainer}>
-              <View style={styles.dropdownHeader}>
-                <Text style={styles.dropdownTitle}>Select Customer</Text>
-                <TouchableOpacity
-                  onPress={() => setShowCustomerPicker(false)}
-                  style={styles.dropdownCloseButton}
-                >
-                  <Ionicons name="close" size={20} color="#666" />
-                </TouchableOpacity>
-              </View>
-              <ScrollView style={styles.dropdownList} showsVerticalScrollIndicator={false}>
-                {customers.map((customer) => (
-                  <TouchableOpacity
-                    key={customer.id}
-                    style={styles.dropdownOption}
-                    onPress={() => handleCustomerSelect(customer)}
-                  >
-                    <View style={styles.customerOptionContent}>
-                      <Text style={styles.dropdownOptionText}>{customer.name}</Text>
-                      {customer.address && (
-                        <Text style={styles.dropdownOptionSubtext}>{customer.address}</Text>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          </View>
-        )}
 
         {/* Frequency Picker Modal */}
         {showFrequencyPicker && (
@@ -389,7 +334,7 @@ export default function AddJobModal({ visible, onClose, onJobAdded }: AddJobModa
                 </TouchableOpacity>
               </View>
               <View style={styles.dropdownList}>
-                {['weekly', 'biweekly', 'monthly', 'quarterly', 'one-time'].map((freq) => (
+                {['4 weeks', '6 weeks', '12 weeks', 'one-time'].map((freq) => (
                   <TouchableOpacity
                     key={freq}
                     style={styles.dropdownOption}

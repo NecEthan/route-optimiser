@@ -21,7 +21,7 @@ export default function TodayScreen() {
     setShowAddJobModal(true);
   };
 
-  const handleJobAdded = () => {
+  const handleCustomerAdded = () => {
     console.log('✅ Customer added successfully, refreshing customer list');
     setJobListKey(prev => prev + 1); // Force refresh of job list
   };
@@ -139,7 +139,7 @@ export default function TodayScreen() {
       <AddJobModal
         visible={showAddJobModal}
         onClose={handleCloseAddJobModal}
-        onJobAdded={handleJobAdded}
+        onCustomerAdded={handleCustomerAdded}
       />
     </SafeAreaView>
   );

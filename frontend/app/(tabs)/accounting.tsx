@@ -3,6 +3,7 @@ import { SafeAreaView, View, Text, StyleSheet, ScrollView, TouchableOpacity, Act
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_CONFIG } from "@/lib";
+import { useFocusEffect } from '@react-navigation/native';
 
 type TabType = 'income' | 'expenses' | 'profit';
 
@@ -47,6 +48,7 @@ export default function AccountingScreen() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -54,9 +56,19 @@ export default function AccountingScreen() {
     fetchPayments();
   }, []);
 
-  const fetchPayments = async () => {
+  // Refresh data when the screen becomes focused
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('🔄 Accounting screen focused - refreshing data...');
+      fetchExpenses();
+      fetchPayments();
+    }, [])
+  );
+
+  const fetchPayments = async (showRefreshing = false) => {
     try {
-      setLoading(true);
+      if (showRefreshing) setRefreshing(true);
+      else setLoading(true);
       setError(null);
 
       const token = await AsyncStorage.getItem('access_token');
@@ -75,6 +87,7 @@ export default function AccountingScreen() {
       const data = await response.json();
       if (data.success) {
         setPayments(data.data);
+        console.log('✅ Payments updated:', data.data.length, 'payments loaded');
       } else {
         setError(data.message || 'Failed to fetch payments');
         console.error("Failed to fetch payments:", data.message);
@@ -85,12 +98,14 @@ export default function AccountingScreen() {
       console.error("Error fetching payments:", error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-   const fetchExpenses = async () => {
+   const fetchExpenses = async (showRefreshing = false) => {
       try {
-        setLoading(true);
+        if (showRefreshing) setRefreshing(true);
+        else setLoading(true);
         setError(null);
         
         const token = await AsyncStorage.getItem('access_token');
@@ -109,6 +124,7 @@ export default function AccountingScreen() {
         const data = await response.json();
         if (data.success) {
           setExpenses(data.data);
+          console.log('✅ Expenses updated:', data.data.length, 'expenses loaded');
         } else {
           setError(data.message || 'Failed to fetch expenses');
           console.error("Failed to fetch expenses:", data.message);
@@ -119,8 +135,17 @@ export default function AccountingScreen() {
         console.error("Error fetching expenses:", error);
       } finally {
         setLoading(false);
+        setRefreshing(false);
       }
     };
+
+  const handleRefresh = async () => {
+    console.log('🔄 Manual refresh triggered');
+    await Promise.all([
+      fetchPayments(true),
+      fetchExpenses(true)
+    ]);
+  };
 
 
   // Convert API expenses to Transaction format for display
@@ -227,8 +252,7 @@ export default function AccountingScreen() {
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={() => {
             setError(null);
-            // Re-trigger useEffect by changing a dependency or call fetchExpenses directly
-            setExpenses([]);
+            handleRefresh();
           }}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
@@ -242,6 +266,18 @@ export default function AccountingScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Accounting</Text>
+        <TouchableOpacity 
+          style={styles.refreshButton}
+          onPress={handleRefresh}
+          disabled={refreshing}
+        >
+          <Ionicons 
+            name="refresh" 
+            size={20} 
+            color={refreshing ? "#999" : "#007AFF"} 
+            style={refreshing ? styles.spinning : undefined}
+          />
+        </TouchableOpacity>
       </View>
 
       {/* Tab Navigation */}
@@ -389,6 +425,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 15,
@@ -398,6 +437,18 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     color: '#333',
+  },
+  refreshButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#f0f8ff',
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  spinning: {
+    transform: [{ rotate: '180deg' }],
   },
   tabContainer: {
     flexDirection: 'row',

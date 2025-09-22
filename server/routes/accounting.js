@@ -42,6 +42,7 @@ router.get('/expenses', async (req, res) => {
     const { data, error } = await supabase
       .from('expenses')
       .select('*')
+      .eq('user_id', req.user.id)
       .order('expense_date', { ascending: false });
 
     if (error) {
@@ -56,7 +57,7 @@ router.get('/expenses', async (req, res) => {
       user: req.user.email
     });
   } catch (error) {
-    console.error('Get customers error:', error);
+    console.error('Get expenses error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch customers',
@@ -434,11 +435,22 @@ router.get('/payments', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('payments')
-      .select('*')
+      .select(`
+        *,
+        customers:customer_id (
+          id,
+          name,
+          email,
+          phone,
+          address,
+          description
+        )
+      `)
+      .eq('user_id', req.user.id)
       .order('payment_date', { ascending: false });
 
     if (error) {
-      console.error('Error fetching expenses:', error);
+      console.error('Error fetching payments:', error);
       throw error;
     }
 
