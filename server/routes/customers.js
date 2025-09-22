@@ -273,6 +273,91 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// PATCH endpoint for partial updates
+router.patch('/:id', async (req, res) => {
+  try {
+    console.log('--------------------')
+    console.log('PATCH updating customer ID:', req.params.id, 'with data:', req.body);
+
+    const { 
+      name, 
+      email, 
+      phone, 
+      address, 
+      description,
+      price,
+      frequency,
+      estimated_duration,
+      last_completed,
+      payment_status,
+      exterior_windows,
+      interior_windows,
+      gutters,
+      soffits,
+      fascias,
+      status
+    } = req.body;
+
+    // Build update data with only provided fields (PATCH semantics)
+    const updateData = {};
+    
+    // Only include fields that are explicitly provided
+    if (name !== undefined) updateData.name = name;
+    if (email !== undefined) updateData.email = email;
+    if (phone !== undefined) updateData.phone = phone;
+    if (address !== undefined) updateData.address = address;
+    if (description !== undefined) updateData.description = description;
+    if (price !== undefined) updateData.price = parseFloat(price);
+    if (frequency !== undefined) updateData.frequency = frequency;
+    if (estimated_duration !== undefined) updateData.estimated_duration = estimated_duration ? parseInt(estimated_duration) : null;
+    if (last_completed !== undefined) updateData.last_completed = last_completed;
+    if (payment_status !== undefined) updateData.payment_status = payment_status;
+    if (status !== undefined) updateData.status = status;
+    
+    // Service type booleans
+    if (exterior_windows !== undefined) updateData.exterior_windows = exterior_windows;
+    if (interior_windows !== undefined) updateData.interior_windows = interior_windows;
+    if (gutters !== undefined) updateData.gutters = gutters;
+    if (soffits !== undefined) updateData.soffits = soffits;
+    if (fascias !== undefined) updateData.fascias = fascias;
+
+    console.log('PATCH filtered update data:', updateData);
+
+    const { data, error } = await supabase
+      .from('customers')
+      .update(updateData)
+      .eq('id', req.params.id)
+      .eq('user_id', req.user.id) // Ensure user can only update their own customers
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Supabase PATCH update error:', error);
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({
+          success: false,
+          message: 'Customer not found or does not belong to user'
+        });
+      }
+      throw error;
+    }
+
+    res.json({
+      success: true,
+      data: data,
+      message: 'Customer updated successfully',
+      method: 'PATCH'
+    });
+  } catch (error) {
+    console.error('PATCH update customer error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update customer',
+      error: error.message
+    });
+  }
+});
+
 router.delete('/:id', async (req, res) => {
   try {
     const { error } = await supabase
