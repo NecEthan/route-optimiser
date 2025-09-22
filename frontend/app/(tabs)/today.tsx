@@ -11,7 +11,7 @@ export default function TodayScreen() {
   const [showCustomerDetails, setShowCustomerDetails] = useState(false);
   const [showAddJobModal, setShowAddJobModal] = useState(false);
   const [jobListKey, setJobListKey] = useState(0); // Force re-render of job list
-  const [hasCustomerUpdates, setHasCustomerUpdates] = useState(false); // Track if we need to refresh
+  const [cashPaymentStates, setCashPaymentStates] = useState<{[key: string]: boolean}>({}); // Track cash payment status for each customer
 
   const handleRefresh = () => {
     Alert.alert("Refresh", "Refreshing customer list...");
@@ -40,6 +40,15 @@ export default function TodayScreen() {
     setShowCustomerDetails(true);
   };
 
+  const handleCashPaymentChange = (customerId: string, isPaidInCash: boolean) => {
+    // Update cash payment state when checkbox is clicked
+    setCashPaymentStates(prev => ({
+      ...prev,
+      [customerId]: isPaidInCash
+    }));
+    console.log(`💰 Cash payment status updated for customer ${customerId}: ${isPaidInCash}`);
+  };
+
   const handleEditCustomer = (customer: Customer) => {
     console.log('✏️ Edit customer requested:', customer.name);
     setShowCustomerDetails(false);
@@ -55,22 +64,32 @@ export default function TodayScreen() {
     // Update the selected customer with the new data from server
     setSelectedCustomer(updatedCustomer);
     
-    // Mark that we have customer updates that need to be reflected in the list
-    setHasCustomerUpdates(true);
-    
     console.log('✅ Selected customer state updated with server response');
+  };
+
+  const handleCustomerCompleted = (customerId: string) => {
+    console.log(`✅ Customer ${customerId} completed and removed from today's list`);
+    console.log('🔄 Forcing JobList refresh...');
+    
+    // Remove from cash payment states as well
+    setCashPaymentStates(prev => {
+      const updated = { ...prev };
+      delete updated[customerId];
+      return updated;
+    });
+    
+    // Force refresh the JobList to show updated data
+    setJobListKey(prev => prev + 1);
   };
 
   const handleCloseCustomerDetails = () => {
     setShowCustomerDetails(false);
     setSelectedCustomer(null);
     
-    // If there were customer updates, refresh the customer list
-    if (hasCustomerUpdates) {
-      console.log('🔄 Refreshing customer list due to updates...');
-      setJobListKey(prev => prev + 1); // Force JobList to re-render and fetch fresh data
-      setHasCustomerUpdates(false); // Reset the flag
-    }
+    // Always refresh the customer list when modal closes
+    // This ensures any completed customers are filtered out
+    console.log('🔄 Modal closed - refreshing customer list...');
+    setJobListKey(prev => prev + 1); // Force JobList to re-render and fetch fresh data
   };
 
   return (
@@ -98,6 +117,8 @@ export default function TodayScreen() {
           showEdit={false} 
           onEdit={() => {}} 
           onJobPress={handleCustomerPress}
+          onCashPaymentChange={handleCashPaymentChange}
+          onCustomerCompleted={handleCustomerCompleted}
         />
         
         
@@ -110,6 +131,8 @@ export default function TodayScreen() {
         onClose={handleCloseCustomerDetails}
         onEdit={handleEditCustomer}
         onJobUpdated={handleCustomerUpdated}
+        onCustomerCompleted={handleCustomerCompleted}
+        cashPaymentStatus={selectedCustomer ? cashPaymentStates[selectedCustomer.id] || false : false}
       />
 
       {/* Add Customer Modal */}

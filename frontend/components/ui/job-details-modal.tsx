@@ -21,6 +21,8 @@ interface CustomerDetailsModalProps {
   onClose: () => void;
   onEdit?: (customer: Customer) => void;
   onJobUpdated?: (updatedCustomer: Customer) => void; // Callback for when customer is updated
+  onCustomerCompleted?: (customerId: string) => void; // Callback for when customer is completed
+  cashPaymentStatus?: boolean; // Track if cash checkbox was checked
 }
 
 export default function JobDetailsModal({
@@ -29,6 +31,8 @@ export default function JobDetailsModal({
   onClose,
   onEdit,
   onJobUpdated,
+  onCustomerCompleted,
+  cashPaymentStatus = false,
 }: CustomerDetailsModalProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -125,14 +129,14 @@ export default function JobDetailsModal({
       // Convert form data to proper types
       const updateData = {
         id: job.id,
-        customer_id: job.customer_id,
+        customer_id: job.id,
         user_id: job.user_id,
         description: editFormData.description,
         price: parseFloat(editFormData.price) || 0,
         frequency: editFormData.frequency,
         last_completed: job.last_completed,
         estimated_duration: editFormData.estimated_duration ? parseInt(editFormData.estimated_duration) : null,
-        active: job.active !== undefined ? job.active : true,
+        active: job.status !== undefined ? job.status : true,
         created_at: job.created_at,
         updated_at: new Date().toISOString()
       };
@@ -213,25 +217,38 @@ export default function JobDetailsModal({
   };
 
   const performJobCompletion = async () => {
-    console.log(job, 'job')
+    console.log('🚀 Starting job completion for customer:', job?.id);
     if (!job?.id) return;
 
     setIsUpdating(true);
     try {
+      console.log('📝 Calling markServiceComplete...');
       const updatedCustomer = await customerService.markServiceComplete(job.id);
-      console.log('✅ Customer service marked as complete:', job);
-        const test = await accountingService.addPayment({
-          job_id: job.id,
-          customer_id: job.customer_id || job.id || '',
-          amount: job.price,
-          method: 'cash',
-          notes: `Payment for: ${job.description || job.name}`
-        });
+      console.log('✅ Customer service marked as complete:', updatedCustomer);
+      console.log('📅 Updated customer last_completed:', updatedCustomer.last_completed);
       
+      // Create payment record
+      console.log('💰 Creating payment record...');
+      await accountingService.addPayment({
+        customer_id: job.id, // Use customer's own ID since we're now customer-centric
+        amount: job.price,
+        method: cashPaymentStatus ? 'cash' : 'pending', // Set method based on checkbox
+        notes: `Payment for: ${job.description || job.name}`
+      });
+      console.log(`✅ Payment created with status: ${cashPaymentStatus ? 'paid' : 'pending'}`);
       
       // Update parent component
       if (onJobUpdated) {
+        console.log('🔄 Calling onJobUpdated with updated customer...');
         onJobUpdated(updatedCustomer);
+      }
+      console.log('(((((((((99999')
+      // Notify parent that customer is completed and should be removed from list
+      if (onCustomerCompleted) {
+        console.log(`📢 Modal calling onCustomerCompleted for customer ${job.id}`);
+        onCustomerCompleted(job.id);
+      } else {
+        console.log('❌ Modal: onCustomerCompleted callback not provided');
       }
 
     } catch (error) {
@@ -240,6 +257,7 @@ export default function JobDetailsModal({
     } finally {
       setIsUpdating(false);
       // Always close modal regardless of success or failure
+      console.log('🚪 Closing modal...');
       onClose();
     }
   };
@@ -320,22 +338,22 @@ export default function JobDetailsModal({
             <View style={styles.infoRow}>
               <View style={styles.iconContainer}>
                 <Ionicons 
-                  name={job.active ? "checkmark-circle" : "close-circle"} 
+                  name={job.status ? "checkmark-circle" : "close-circle"} 
                   size={20} 
-                  color={job.active ? "#2E7D32" : "#F44336"} 
+                  color={job.status ? "#2E7D32" : "#F44336"} 
                 />
               </View>
               <View style={styles.infoContent}>
                 <Text style={styles.label}>Active Status</Text>
                 <View style={[
                   styles.statusBadge, 
-                  job.active ? styles.activeBadge : styles.inactiveBadge
+                  job.status ? styles.activeBadge : styles.inactiveBadge
                 ]}>
                   <Text style={[
                     styles.statusText,
-                    job.active ? styles.activeText : styles.inactiveText
+                    job.status ? styles.activeText : styles.inactiveText
                   ]}>
-                    {job.active ? 'Active' : 'Inactive'}
+                    {job.status ? 'Active' : 'Inactive'}
                   </Text>
                 </View>
               </View>
@@ -423,7 +441,6 @@ export default function JobDetailsModal({
           {job.id && (
             <View style={styles.debugSection}>
               <Text style={styles.debugText}>Job ID: {job.id}</Text>
-              {job.customer_id && <Text style={styles.debugText}>Customer ID: {job.customer_id}</Text>}
               {job.user_id && <Text style={styles.debugText}>User ID: {job.user_id}</Text>}
             </View>
           )}

@@ -23,7 +23,6 @@ interface Payment {
   method: string;
   notes?: string;
   customer_id?: string;
-  job_id?: string;
   customers?: {
     name: string;
     email?: string;

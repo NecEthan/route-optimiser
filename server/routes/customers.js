@@ -159,20 +159,55 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     console.log('--------------------')
-    const { id, name, email, phone, address, latitude, longitude } = req.body;
     console.log('Updating customer ID:', req.params.id, 'with data:', req.body);
-    console.log(id, 'id')
 
-    // Only update fields that exist in the database schema
-    const updateData = {
-      name,
-      email,
-      phone,
-      address,
-      latitude: latitude ? parseFloat(latitude) : null,
-      longitude: longitude ? parseFloat(longitude) : null,
-      updated_at: new Date().toISOString()
-    };
+    const { 
+      name, 
+      email, 
+      phone, 
+      address, 
+      latitude, 
+      longitude,
+      description,
+      price,
+      frequency,
+      estimated_duration,
+      last_completed,
+      payment_status,
+      exterior_windows,
+      interior_windows,
+      gutters,
+      soffits,
+      fascias,
+      status
+    } = req.body;
+
+    // Build update data with only provided fields
+    const updateData = {};
+    
+    // Basic customer fields
+    if (name !== undefined) updateData.name = name;
+    if (email !== undefined) updateData.email = email;
+    if (phone !== undefined) updateData.phone = phone;
+    if (address !== undefined) updateData.address = address;
+    if (latitude !== undefined) updateData.latitude = latitude ? parseFloat(latitude) : null;
+    if (longitude !== undefined) updateData.longitude = longitude ? parseFloat(longitude) : null;
+    
+    // Service fields
+    if (description !== undefined) updateData.description = description;
+    if (price !== undefined) updateData.price = price ? parseFloat(price) : null;
+    if (frequency !== undefined) updateData.frequency = frequency;
+    if (estimated_duration !== undefined) updateData.estimated_duration = estimated_duration ? parseInt(estimated_duration) : null;
+    if (last_completed !== undefined) updateData.last_completed = last_completed;
+    if (payment_status !== undefined) updateData.payment_status = payment_status;
+    if (status !== undefined) updateData.status = status;
+    
+    // Service type booleans
+    if (exterior_windows !== undefined) updateData.exterior_windows = exterior_windows;
+    if (interior_windows !== undefined) updateData.interior_windows = interior_windows;
+    if (gutters !== undefined) updateData.gutters = gutters;
+    if (soffits !== undefined) updateData.soffits = soffits;
+    if (fascias !== undefined) updateData.fascias = fascias;
 
     console.log('Filtered update data:', updateData);
 
@@ -180,6 +215,7 @@ router.put('/:id', async (req, res) => {
       .from('customers')
       .update(updateData)
       .eq('id', req.params.id)
+      .eq('user_id', req.user.id) // Ensure user can only update their own customers
       .select()
       .single();
 
@@ -188,7 +224,7 @@ router.put('/:id', async (req, res) => {
       if (error.code === 'PGRST116') {
         return res.status(404).json({
           success: false,
-          message: 'Customer not found'
+          message: 'Customer not found or does not belong to user'
         });
       }
       throw error;

@@ -1,6 +1,7 @@
-import { Job } from "@/app/interfaces/job.interface";
 import { API_CONFIG } from "./api-config";
 import { authService } from "./auth-service";
+
+
 
 class AccountingService {
 
@@ -13,7 +14,6 @@ class AccountingService {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          job_id: paymentData.job_id,
           customer_id: paymentData.customer_id,
           amount: paymentData.amount,
           method: paymentData.method || 'cash',
@@ -27,7 +27,7 @@ class AccountingService {
       }
 
       const data = await response.json();
-      return data.payment; 
+      return data.data; 
     } catch (error) {
       console.error('AccountingService: Add payment error:', error);
       throw error;

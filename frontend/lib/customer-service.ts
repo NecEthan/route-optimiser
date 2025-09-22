@@ -21,10 +21,10 @@ export interface Customer {
   gutters?: boolean;
   soffits?: boolean;
   fascias?: boolean;
+  status?: boolean; // Based on your schema (fix the syntax error: status BOOLEAN)
   
   // Legacy compatibility fields for components that expect job structure
-  active?: boolean; // Derived from other fields
-  paid_in_cash?: boolean; // Legacy field
+  paid_in_cash?: boolean; // Legacy field for backward compatibility
   customers?: { // For backward compatibility
     id: string;
     name: string;
@@ -151,8 +151,8 @@ class CustomerService {
         method: 'PUT',
         headers,
         body: JSON.stringify({
-          active: false,
           last_completed: new Date().toISOString().split('T')[0], // Today's date
+          payment_status: false, // Will be updated when payment is processed
         })
       });
 

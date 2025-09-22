@@ -471,7 +471,7 @@ router.post('/payments', async (req, res) => {
       });
     }
 
-    const { amount, payment_date, method, notes, customer_id, job_id } = req.body;
+    const { amount, payment_date, method, notes, customer_id } = req.body;
 
     // Validation
     if (!amount) {
@@ -489,11 +489,11 @@ router.post('/payments', async (req, res) => {
     }
 
     // Validate method if provided
-    const validMethods = ['cash', 'card', 'bank'];
+    const validMethods = ['cash', 'card', 'bank', 'pending'];
     if (method && !validMethods.includes(method)) {
       return res.status(400).json({
         success: false,
-        message: 'Method must be one of: cash, card, bank'
+        message: 'Method must be one of: cash, card, bank, pending'
       });
     }
 
@@ -503,7 +503,6 @@ router.post('/payments', async (req, res) => {
       method: method || 'cash',
       notes: notes?.trim() || null,
       customer_id: customer_id || null,
-      job_id: job_id || null
     };
 
     // Add payment_date if provided, otherwise use database default (NOW())
@@ -511,27 +510,9 @@ router.post('/payments', async (req, res) => {
       paymentData.payment_date = payment_date;
     }
 
-    console.log('💰 Adding payment:', paymentData);
-
     const { data, error } = await supabase
       .from('payments')
       .insert([paymentData])
-      .select(`
-        *,
-        customers:customer_id (
-          id,
-          name,
-          email,
-          phone,
-          address
-        ),
-        jobs:job_id (
-          id,
-          description,
-          price,
-          frequency
-        )
-      `)
       .single();
 
     if (error) {
@@ -558,7 +539,7 @@ router.post('/payments', async (req, res) => {
 router.put('/payments/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { amount, payment_date, method, notes, customer_id, job_id } = req.body;
+    const { amount, payment_date, method, notes, customer_id } = req.body;
     console.log('💰 Updating payment ID:', id, 'with data:', req.body);
 
     // Validation
@@ -577,11 +558,11 @@ router.put('/payments/:id', async (req, res) => {
     }
 
     // Validate method if provided
-    const validMethods = ['cash', 'card', 'bank'];
+    const validMethods = ['cash', 'card', 'bank', 'pending'];
     if (method && !validMethods.includes(method)) {
       return res.status(400).json({
         success: false,
-        message: 'Method must be one of: cash, card, bank'
+        message: 'Method must be one of: cash, card, bank, pending'
       });
     }
 
@@ -589,8 +570,7 @@ router.put('/payments/:id', async (req, res) => {
       amount: parseFloat(amount),
       method: method || 'cash',
       notes: notes?.trim() || null,
-      customer_id: customer_id || null,
-      job_id: job_id || null
+      customer_id: customer_id || null
     };
 
     if (payment_date) {
@@ -609,12 +589,6 @@ router.put('/payments/:id', async (req, res) => {
           name,
           email,
           phone
-        ),
-        jobs:job_id (
-          id,
-          description,
-          address,
-          status
         )
       `)
       .single();
@@ -861,12 +835,6 @@ router.get('/payments/by-customer/:customer_id', async (req, res) => {
           name,
           email,
           phone
-        ),
-        jobs:job_id (
-          id,
-          description,
-          address,
-          status
         )
       `)
       .eq('user_id', req.user.id)
@@ -893,53 +861,6 @@ router.get('/payments/by-customer/:customer_id', async (req, res) => {
     });
   }
 });
-
-// GET /api/accounting/payments/by-job/:job_id - Get payments for specific job
-router.get('/payments/by-job/:job_id', async (req, res) => {
-  try {
-    const { job_id } = req.params;
-
-    const { data, error } = await supabase
-      .from('payments')
-      .select(`
-        *,
-        customers:customer_id (
-          id,
-          name,
-          email,
-          phone
-        ),
-        jobs:job_id (
-          id,
-          description,
-          address,
-          status
-        )
-      `)
-      .eq('user_id', req.user.id)
-      .eq('job_id', job_id)
-      .order('payment_date', { ascending: false });
-
-    if (error) {
-      throw error;
-    }
-
-    res.json({
-      success: true,
-      data: data || [],
-      count: data?.length || 0,
-      job_id
-    });
-  } catch (error) {
-    console.error('Get job payments error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch job payments',
-      error: error.message
-    });
-  }
-});
-
 
 
 module.exports = router;

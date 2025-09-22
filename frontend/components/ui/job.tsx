@@ -9,10 +9,11 @@ type JobProps = {
   onCashToggle?: (jobId: string, isPaidInCash: boolean) => void;
   onEdit?: (jobId: string) => void;
   onPress?: () => void;
+  onCompleted?: () => void;
   showEdit?: boolean;
 };
 
-export default function Job({ job, onToggle, onCashToggle, onEdit, onPress, showEdit = false }: JobProps) {
+export default function Job({ job, onToggle, onCashToggle, onEdit, onPress, onCompleted, showEdit = false }: JobProps) {
   // Only track cash payment status
   const [isPaidInCash, setIsPaidInCash] = useState(job.paid_in_cash || false);
 
