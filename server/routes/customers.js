@@ -102,24 +102,50 @@ router.post('/', async (req, res) => {
     console.log('POST /api/customers - Received data:', req.body);
     console.log('User from token:', req.user);
     
-    const { name, email, phone, address, latitude, longitude } = req.body;
+    const { 
+      name, 
+      email, 
+      phone, 
+      description, 
+      address, 
+      price, 
+      frequency, 
+      estimated_duration,
+      payment_status,
+      exterior_windows,
+      interior_windows,
+      gutters,
+      soffits,
+      fascias,
+      status,
+      latitude, 
+      longitude 
+    } = req.body;
 
-    if (!name || !address) {
+    if (!name || !address || !description || price === undefined) {
       return res.status(400).json({
         success: false,
-        message: 'Name and address are required'
+        message: 'Name, address, description, and price are required'
       });
     }
 
     const customerData = {
       name,
-      email,
-      phone,
+      email: email || null,
+      phone: phone || null,
+      description,
       address,
+      price: parseFloat(price),
+      frequency: frequency || null,
+      estimated_duration: estimated_duration ? parseInt(estimated_duration) : null,
+      payment_status: payment_status || false,
+      exterior_windows: exterior_windows || false,
+      interior_windows: interior_windows || false,
+      gutters: gutters || false,
+      soffits: soffits || false,
+      fascias: fascias || false,
+      status: status !== undefined ? status : true, // Default to active
       user_id: req.user.id, // Use authenticated user ID
-      latitude: latitude ? parseFloat(latitude) : null,
-      longitude: longitude ? parseFloat(longitude) : null,
-      // Remove frequency - it doesn't exist in your schema
     };
 
     console.log('Inserting customer data:', customerData);
