@@ -35,6 +35,7 @@ export default function PaymentSettingsScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showAddCardModal, setShowAddCardModal] = useState(false);
+  const [cardToReplace, setCardToReplace] = useState<string | null>(null);
   const [newCard, setNewCard] = useState({
     cardNumber: '',
     expiryMonth: '',
@@ -160,10 +161,6 @@ const fetchSubscription = async () => {
     }
   };
 
-  const handleAddPaymentMethod = () => {
-    setShowAddCardModal(true);
-  };
-
   // Helper functions for card input formatting
   const formatCardNumber = (text: string) => {
     const cleaned = text.replace(/\D/g, '');
@@ -232,8 +229,22 @@ const fetchSubscription = async () => {
         updated_at: new Date().toISOString(),
       };
 
-      // Add to payment methods list
-      setPaymentMethods(prev => [...prev, newPaymentMethod]);
+      // Add to payment methods list or replace existing
+      if (cardToReplace) {
+        // Replace the existing card
+        setPaymentMethods(prev => 
+          prev.map(method => 
+            method.id === cardToReplace 
+              ? { ...newPaymentMethod, is_default: method.is_default } // Keep same default status
+              : method
+          )
+        );
+        Alert.alert('Success', 'Payment method replaced successfully!');
+      } else {
+        // Add new card
+        setPaymentMethods(prev => [...prev, newPaymentMethod]);
+        Alert.alert('Success', 'Payment method added successfully!');
+      }
 
       // Reset form and close modal
       setNewCard({
@@ -243,9 +254,8 @@ const fetchSubscription = async () => {
         cvc: '',
         cardholderName: '',
       });
+      setCardToReplace(null);
       setShowAddCardModal(false);
-
-      Alert.alert('Success', 'Payment method added successfully!');
     } catch (err) {
       console.error('Failed to add payment method:', err);
       Alert.alert('Error', 'Failed to add payment method. Please try again.');
@@ -262,43 +272,70 @@ const fetchSubscription = async () => {
     return 'unknown';
   };
 
-  const handleUpdateCard = (cardId: string) => {
-    Alert.alert('Update Card', `This would open an update form for card ending in ${paymentMethods.find(p => p.id === cardId)?.last_four}`);
-  };
-
-  const handleSetDefaultCard = async (cardId: string) => {
-    setLoading(true);
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For subscription model, there's typically only one active subscription
-      // But we can still mark it as the primary one
-      
-      Alert.alert('Success', 'Default payment method updated!');
-    } catch (error) {
-      console.error('Set default error:', error);
-      Alert.alert('Error', 'Failed to update default payment method.');
-    } finally {
-      setLoading(false);
-    }
+  const handleReplaceCard = (cardId: string) => {
+    // Set the card to be replaced and open modal directly
+    setCardToReplace(cardId);
+    setShowAddCardModal(true);
   };
 
   const handleRemoveCard = (cardId: string) => {
     const card = paymentMethods.find(p => p.id === cardId);
+    const isDefault = card?.is_default;
+    const isOnlyCard = paymentMethods.length === 1;
+    
+    let title, message;
+    
+    if (isOnlyCard) {
+      title = 'Cannot Remove Card';
+      message = 'This is your only payment method. Add another card before removing this one.';
+      Alert.alert(title, message);
+      return;
+    }
+    
+    if (isDefault) {
+      title = 'Remove Default Payment Method';
+      message = `Removing card ending in ${card?.last_four} will set another card as default. Continue?`;
+    } else {
+      title = 'Remove Payment Method';
+      message = `Are you sure you want to remove card ending in ${card?.last_four}?`;
+    }
     
     Alert.alert(
-      'Cancel Subscription',
-      `Are you sure you want to cancel your subscription with card ending in ${card?.last_four}? This will end your subscription.`,
+      title,
+      message,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Cancel Subscription',
+          text: 'Remove',
           style: 'destructive',
-          onPress: () => {
-            // In real app, this would cancel the Stripe subscription
-            setPaymentMethods(prev => prev.filter(method => method.id !== cardId));
-            Alert.alert('Success', 'Subscription cancelled.');
+          onPress: async () => {
+            setLoading(true);
+            try {
+              const result = await settingsService.removePaymentMethod(cardId);
+              
+              if (result.success) {
+                // Remove from local state
+                setPaymentMethods(prev => {
+                  const remaining = prev.filter(method => method.id !== cardId);
+                  
+                  // If we removed the default card, make the first remaining card default
+                  if (isDefault && remaining.length > 0) {
+                    remaining[0].is_default = true;
+                  }
+                  
+                  return remaining;
+                });
+                
+                Alert.alert('Success', 'Payment method removed successfully.');
+              } else {
+                Alert.alert('Error', result.message || 'Failed to remove payment method.');
+              }
+            } catch (error) {
+              console.error('Remove card error:', error);
+              Alert.alert('Error', 'Failed to remove payment method.');
+            } finally {
+              setLoading(false);
+            }
           }
         }
       ]
@@ -384,35 +421,23 @@ const fetchSubscription = async () => {
 
               <View style={styles.cardActions}>
                 <Button
-                  title="Update Card"
-                  onPress={() => handleUpdateCard(method.id)}
+                  title="Replace"
+                  onPress={() => handleReplaceCard(method.id)}
                   variant="secondary"
                   size="small"
                 />
                 
-                <Button
-                  title="Update Billing"
-                  onPress={() => handleSetDefaultCard(method.id)}
-                  variant="outline"
-                  size="small"
-                  loading={loading}
-                  disabled={loading}
-                />
-                
-                <TouchableOpacity
-                  onPress={() => handleRemoveCard(method.id)}
-                  style={styles.removeButton}
-                >
-                  <Ionicons name="trash-outline" size={16} color="#dc3545" />
-                </TouchableOpacity>
+                {paymentMethods.length > 1 && (
+                  <TouchableOpacity
+                    onPress={() => handleRemoveCard(method.id)}
+                    style={styles.removeButton}
+                  >
+                    <Ionicons name="trash-outline" size={16} color="#dc3545" />
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           ))}
-
-          <TouchableOpacity style={styles.addPaymentButton} onPress={handleAddPaymentMethod}>
-            <Ionicons name="add-circle-outline" size={20} color="#007AFF" />
-            <Text style={styles.addPaymentText}>Add New Payment Method</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Billing Information */}
@@ -517,7 +542,10 @@ const fetchSubscription = async () => {
         visible={showAddCardModal}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setShowAddCardModal(false)}
+        onRequestClose={() => {
+          setShowAddCardModal(false);
+          setCardToReplace(null);
+        }}
       >
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -526,12 +554,17 @@ const fetchSubscription = async () => {
           <SafeAreaView style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <TouchableOpacity 
-                onPress={() => setShowAddCardModal(false)}
+                onPress={() => {
+                  setShowAddCardModal(false);
+                  setCardToReplace(null);
+                }}
                 style={styles.modalCancelButton}
               >
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
-              <Text style={styles.modalTitle}>Add Payment Method</Text>
+              <Text style={styles.modalTitle}>
+                {cardToReplace ? 'Replace Payment Method' : 'Add Payment Method'}
+              </Text>
               <TouchableOpacity 
                 onPress={handleCardSubmit}
                 style={[styles.modalSaveButton, loading && styles.modalSaveButtonDisabled]}
@@ -776,22 +809,6 @@ const styles = StyleSheet.create({
   removeButton: {
     padding: 8,
     marginLeft: 'auto',
-  },
-  addPaymentButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: '#007AFF',
-    borderRadius: 12,
-    borderStyle: 'dashed',
-  },
-  addPaymentText: {
-    fontSize: 16,
-    color: '#007AFF',
-    fontWeight: '600',
   },
   billingInfoCard: {
     gap: 12,
