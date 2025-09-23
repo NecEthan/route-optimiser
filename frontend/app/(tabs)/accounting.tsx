@@ -168,6 +168,46 @@ export default function AccountingScreen() {
     handleRefresh();
   };
 
+  const markPaymentAsPaid = async (paymentId: string) => {
+    try {
+      const token = await AsyncStorage.getItem('access_token');
+      if (!token) {
+        setError('No authentication token found');
+        return;
+      }
+
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/accounting/payments/${paymentId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'paid'
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // Update local state to reflect the change immediately
+        setPayments(prevPayments => 
+          prevPayments.map(payment => 
+            payment.id === paymentId 
+              ? { ...payment, status: 'paid', paid_at: new Date().toISOString() }
+              : payment
+          )
+        );
+        console.log('✅ Payment marked as paid');
+      } else {
+        setError(data.message || 'Failed to update payment status');
+        console.error("Failed to update payment status:", data.message);
+      }
+    } catch (error) {
+      setError('Error updating payment status');
+      console.error("Error updating payment status:", error);
+    }
+  };
+
 
   // Convert API expenses to Transaction format for display
   const expenseTransactions: Transaction[] = expenses.map(expense => ({
@@ -505,6 +545,16 @@ export default function AccountingScreen() {
                     Due {formatDate(transaction.due_date)}
                   </Text>
                 )}
+                {/* Mark as Paid Button for Pending Income */}
+                {transaction.type === 'income' && transaction.status === 'pending' && (
+                  <TouchableOpacity 
+                    style={styles.markPaidButton}
+                    onPress={() => markPaymentAsPaid(transaction.id)}
+                  >
+                    <Ionicons name="checkmark" size={14} color="#fff" />
+                    <Text style={styles.markPaidButtonText}>Mark Paid</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           ))
@@ -768,6 +818,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#ffc107',
     fontWeight: '500',
+  },
+  markPaidButton: {
+    backgroundColor: '#28a745',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 6,
+  },
+  markPaidButtonText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
   },
   emptyState: {
     alignItems: 'center',

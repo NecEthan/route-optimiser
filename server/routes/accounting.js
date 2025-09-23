@@ -713,7 +713,6 @@ router.patch('/payments/:id/status', async (req, res) => {
           name,
           email,
           phone
-        ),
         )
       `)
       .single();
