@@ -1,25 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Alert, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Alert, ScrollView, SafeAreaView, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import Button from "@/components/ui/button";
 import { Ionicons } from '@expo/vector-icons';
 import { settingsService } from '@/lib';
 
 interface PaymentMethod {
-  id: string;
+  id: string; // UUID from the database
   user_id: string;
   stripe_customer_id: string;
-  stripe_subscription_id: string;
   stripe_payment_method_id: string;
-  last_four: string;
-  card_type: string;
-  expiration_month: number;
-  expiration_year: number;
+  last_four: string | null;
+  card_type: string | null;
+  expiration_month: number | null;
+  expiration_year: number | null;
   bank_name?: string | null;
-  subscription_price: number;
-  subscription_start_date: string;
-  billing_cycle: string;
-  subscription_type: string;
+  cardholder_name: string | null;
+  is_default: boolean;
   status: string;
   created_at: string;
   updated_at: string;
@@ -37,6 +34,14 @@ interface BillingHistoryItem {
 export default function PaymentSettingsScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [showAddCardModal, setShowAddCardModal] = useState(false);
+  const [newCard, setNewCard] = useState({
+    cardNumber: '',
+    expiryMonth: '',
+    expiryYear: '',
+    cvc: '',
+    cardholderName: '',
+  });
 
 useEffect(() => {
   
@@ -63,39 +68,33 @@ const fetchSubscription = async () => {
   
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
     {
-      id: '1',
+      id: 'pm_mock_001',
       user_id: 'mock-user-id',
       stripe_customer_id: 'cus_mock_001',
-      stripe_subscription_id: 'sub_mock_001',
       stripe_payment_method_id: 'pm_mock_001',
       last_four: '4242',
       card_type: 'visa',
       expiration_month: 12,
       expiration_year: 2025,
       bank_name: null,
-      subscription_price: 9.99,
-      subscription_start_date: '2025-01-01',
-      billing_cycle: 'monthly',
-      subscription_type: 'basic',
+      cardholder_name: 'John Doe',
+      is_default: true,
       status: 'active',
       created_at: '2025-01-01T00:00:00Z',
       updated_at: '2025-01-01T00:00:00Z'
     },
     {
-      id: '2',
+      id: 'pm_mock_002',
       user_id: 'mock-user-id',
       stripe_customer_id: 'cus_mock_002',
-      stripe_subscription_id: 'sub_mock_002', 
       stripe_payment_method_id: 'pm_mock_002',
       last_four: '5555',
       card_type: 'mastercard',
       expiration_month: 8,
       expiration_year: 2026,
       bank_name: null,
-      subscription_price: 9.99,
-      subscription_start_date: '2025-02-01',
-      billing_cycle: 'monthly',
-      subscription_type: 'basic',
+      cardholder_name: 'John Doe',
+      is_default: false,
       status: 'active',
       created_at: '2025-02-01T00:00:00Z',
       updated_at: '2025-02-01T00:00:00Z'
@@ -127,7 +126,9 @@ const fetchSubscription = async () => {
     }
   ]);
 
-  const getCardIcon = (cardType: string) => {
+  const getCardIcon = (cardType: string | null | undefined) => {
+    if (!cardType) return 'card';
+    
     switch (cardType.toLowerCase()) {
       case 'visa':
         return 'card';
@@ -142,7 +143,9 @@ const fetchSubscription = async () => {
     }
   };
 
-  const getCardName = (cardType: string) => {
+  const getCardName = (cardType: string | null | undefined) => {
+    if (!cardType) return 'Credit Card';
+    
     switch (cardType.toLowerCase()) {
       case 'visa':
         return 'Visa';
@@ -158,7 +161,105 @@ const fetchSubscription = async () => {
   };
 
   const handleAddPaymentMethod = () => {
-    Alert.alert('Add Payment Method', 'This would open a secure card entry form.');
+    setShowAddCardModal(true);
+  };
+
+  // Helper functions for card input formatting
+  const formatCardNumber = (text: string) => {
+    const cleaned = text.replace(/\D/g, '');
+    const formatted = cleaned.replace(/(\d{4})(?=\d)/g, '$1 ');
+    return formatted.slice(0, 19); // Max 16 digits + 3 spaces
+  };
+
+  const formatExpiryMonth = (text: string) => {
+    const cleaned = text.replace(/\D/g, '');
+    return cleaned.slice(0, 2);
+  };
+
+  const formatExpiryYear = (text: string) => {
+    const cleaned = text.replace(/\D/g, '');
+    return cleaned.slice(0, 4);
+  };
+
+  const formatCVC = (text: string) => {
+    const cleaned = text.replace(/\D/g, '');
+    return cleaned.slice(0, 4);
+  };
+
+  const handleCardSubmit = async () => {
+    // Validate inputs
+    const cardNumberClean = newCard.cardNumber.replace(/\s/g, '');
+    if (!cardNumberClean || cardNumberClean.length !== 16) {
+      Alert.alert('Error', 'Please enter a valid 16-digit card number');
+      return;
+    }
+
+    if (!newCard.expiryMonth || !newCard.expiryYear) {
+      Alert.alert('Error', 'Please enter card expiry date');
+      return;
+    }
+
+    if (!newCard.cvc || newCard.cvc.length < 3) {
+      Alert.alert('Error', 'Please enter a valid CVC');
+      return;
+    }
+
+    if (!newCard.cardholderName.trim()) {
+      Alert.alert('Error', 'Please enter cardholder name');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Simulate API call to add payment method
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Create new payment method object
+      const newPaymentMethod: PaymentMethod = {
+        id: `pm_new_${Date.now()}`,
+        user_id: 'current-user-id',
+        stripe_customer_id: 'cus_new_customer',
+        stripe_payment_method_id: `pm_${Date.now()}`,
+        last_four: cardNumberClean.slice(-4),
+        card_type: getCardTypeFromNumber(cardNumberClean),
+        expiration_month: parseInt(newCard.expiryMonth),
+        expiration_year: parseInt(newCard.expiryYear),
+        bank_name: null,
+        cardholder_name: newCard.cardholderName,
+        is_default: paymentMethods.length === 0, // First card is default
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      // Add to payment methods list
+      setPaymentMethods(prev => [...prev, newPaymentMethod]);
+
+      // Reset form and close modal
+      setNewCard({
+        cardNumber: '',
+        expiryMonth: '',
+        expiryYear: '',
+        cvc: '',
+        cardholderName: '',
+      });
+      setShowAddCardModal(false);
+
+      Alert.alert('Success', 'Payment method added successfully!');
+    } catch (err) {
+      console.error('Failed to add payment method:', err);
+      Alert.alert('Error', 'Failed to add payment method. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getCardTypeFromNumber = (cardNumber: string): string => {
+    if (cardNumber.startsWith('4')) return 'visa';
+    if (cardNumber.startsWith('5') || cardNumber.startsWith('2')) return 'mastercard';
+    if (cardNumber.startsWith('3')) return 'amex';
+    if (cardNumber.startsWith('6')) return 'discover';
+    return 'unknown';
   };
 
   const handleUpdateCard = (cardId: string) => {
@@ -265,9 +366,12 @@ const fetchSubscription = async () => {
                   <Ionicons name="card" size={24} color="#007AFF" />
                   <View style={styles.cardDetails}>
                     <Text style={styles.cardType}>{getCardName(method.card_type)}</Text>
-                    <Text style={styles.cardNumber}>•••• •••• •••• {method.last_four}</Text>
+                    <Text style={styles.cardNumber}>•••• •••• •••• {method.last_four || 'XXXX'}</Text>
                     <Text style={styles.cardExpiry}>
-                      Expires {method.expiration_month.toString().padStart(2, '0')}/{method.expiration_year}
+                      Expires {method.expiration_month && method.expiration_year 
+                        ? `${method.expiration_month.toString().padStart(2, '0')}/${method.expiration_year}`
+                        : 'N/A'
+                      }
                     </Text>
                   </View>
                 </View>
@@ -319,19 +423,19 @@ const fetchSubscription = async () => {
               <>
                 <View style={styles.billingRow}>
                   <Text style={styles.billingLabel}>Subscription:</Text>
-                  <Text style={styles.billingValue}>{paymentMethods[0].subscription_type.charAt(0).toUpperCase() + paymentMethods[0].subscription_type.slice(1)} Plan</Text>
+                                    <Text style={styles.billingValue}>Basic Plan</Text>
                 </View>
                 <View style={styles.billingRow}>
-                  <Text style={styles.billingLabel}>Billing cycle:</Text>
-                  <Text style={styles.billingValue}>{paymentMethods[0].billing_cycle.charAt(0).toUpperCase() + paymentMethods[0].billing_cycle.slice(1)}</Text>
+                  <Text style={styles.billingLabel}>Billing Frequency</Text>
+                  <Text style={styles.billingValue}>Monthly</Text>
                 </View>
                 <View style={styles.billingRow}>
-                  <Text style={styles.billingLabel}>Amount:</Text>
-                  <Text style={styles.billingValue}>${paymentMethods[0].subscription_price}/{paymentMethods[0].billing_cycle}</Text>
+                  <Text style={styles.billingLabel}>Amount</Text>
+                  <Text style={styles.billingValue}>$29.99/month</Text>
                 </View>
                 <View style={styles.billingRow}>
-                  <Text style={styles.billingLabel}>Started:</Text>
-                  <Text style={styles.billingValue}>{formatDate(paymentMethods[0].subscription_start_date)}</Text>
+                  <Text style={styles.billingLabel}>Next Billing Date</Text>
+                  <Text style={styles.billingValue}>{formatDate(new Date().toISOString())}</Text>
                 </View>
                 <View style={styles.billingRow}>
                   <Text style={styles.billingLabel}>Status:</Text>
@@ -407,6 +511,154 @@ const fetchSubscription = async () => {
           </View>
         </View>
       </ScrollView>
+
+      {/* Add Payment Method Modal */}
+      <Modal
+        visible={showAddCardModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowAddCardModal(false)}
+      >
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalContainer}
+        >
+          <SafeAreaView style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity 
+                onPress={() => setShowAddCardModal(false)}
+                style={styles.modalCancelButton}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Add Payment Method</Text>
+              <TouchableOpacity 
+                onPress={handleCardSubmit}
+                style={[styles.modalSaveButton, loading && styles.modalSaveButtonDisabled]}
+                disabled={loading}
+              >
+                <Text style={[styles.modalSaveText, loading && styles.modalSaveTextDisabled]}>
+                  {loading ? 'Adding...' : 'Save'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+              {/* Card Preview */}
+              <View style={styles.cardPreviewContainer}>
+                <View style={styles.cardPreview}>
+                  <View style={styles.cardPreviewTop}>
+                    <Text style={styles.cardPreviewBank}>
+                      {getCardTypeFromNumber(newCard.cardNumber.replace(/\s/g, '')) === 'visa' ? 'VISA' :
+                       getCardTypeFromNumber(newCard.cardNumber.replace(/\s/g, '')) === 'mastercard' ? 'MASTERCARD' :
+                       getCardTypeFromNumber(newCard.cardNumber.replace(/\s/g, '')) === 'amex' ? 'AMEX' : 'CARD'}
+                    </Text>
+                    <View style={styles.cardPreviewChip} />
+                  </View>
+                  
+                  <View style={styles.cardPreviewMiddle}>
+                    <Text style={styles.cardPreviewNumber}>
+                      {newCard.cardNumber || '•••• •••• •••• ••••'}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.cardPreviewBottom}>
+                    <View>
+                      <Text style={styles.cardPreviewLabel}>CARD HOLDER</Text>
+                      <Text style={styles.cardPreviewName}>
+                        {newCard.cardholderName || 'YOUR NAME'}
+                      </Text>
+                    </View>
+                    <View>
+                      <Text style={styles.cardPreviewLabel}>EXPIRES</Text>
+                      <Text style={styles.cardPreviewExpiry}>
+                        {newCard.expiryMonth && newCard.expiryYear 
+                          ? `${newCard.expiryMonth.padStart(2, '0')}/${newCard.expiryYear.slice(-2)}`
+                          : 'MM/YY'
+                        }
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* Form Fields */}
+              <View style={styles.modalFormSection}>
+                <View style={styles.modalInputGroup}>
+                  <Text style={styles.modalInputLabel}>Card Number</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="1234 5678 9012 3456"
+                    value={newCard.cardNumber}
+                    onChangeText={(text) => setNewCard(prev => ({ ...prev, cardNumber: formatCardNumber(text) }))}
+                    keyboardType="numeric"
+                    maxLength={19}
+                  />
+                </View>
+
+                <View style={styles.modalRowInputs}>
+                  <View style={[styles.modalInputGroup, { flex: 1, marginRight: 10 }]}>
+                    <Text style={styles.modalInputLabel}>MM</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      placeholder="12"
+                      value={newCard.expiryMonth}
+                      onChangeText={(text) => setNewCard(prev => ({ ...prev, expiryMonth: formatExpiryMonth(text) }))}
+                      keyboardType="numeric"
+                      maxLength={2}
+                    />
+                  </View>
+                  
+                  <View style={[styles.modalInputGroup, { flex: 1, marginRight: 10 }]}>
+                    <Text style={styles.modalInputLabel}>YYYY</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      placeholder="2027"
+                      value={newCard.expiryYear}
+                      onChangeText={(text) => setNewCard(prev => ({ ...prev, expiryYear: formatExpiryYear(text) }))}
+                      keyboardType="numeric"
+                      maxLength={4}
+                    />
+                  </View>
+                  
+                  <View style={[styles.modalInputGroup, { flex: 1 }]}>
+                    <Text style={styles.modalInputLabel}>CVC</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      placeholder="123"
+                      value={newCard.cvc}
+                      onChangeText={(text) => setNewCard(prev => ({ ...prev, cvc: formatCVC(text) }))}
+                      keyboardType="numeric"
+                      maxLength={4}
+                      secureTextEntry
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.modalInputGroup}>
+                  <Text style={styles.modalInputLabel}>Cardholder Name</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="John Doe"
+                    value={newCard.cardholderName}
+                    onChangeText={(text) => setNewCard(prev => ({ ...prev, cardholderName: text.toUpperCase() }))}
+                    autoCapitalize="characters"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.modalSecuritySection}>
+                <View style={styles.modalSecurityIcon}>
+                  <Ionicons name="shield-checkmark" size={24} color="#4CAF50" />
+                </View>
+                <Text style={styles.modalSecurityText}>
+                  Your payment information is encrypted and secure. This is a demo form for testing purposes.
+                </Text>
+              </View>
+            </ScrollView>
+          </SafeAreaView>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -639,5 +891,185 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 2,
+  },
+
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  modalCancelButton: {
+    padding: 8,
+  },
+  modalCancelText: {
+    color: '#007AFF',
+    fontSize: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  modalSaveButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  modalSaveButtonDisabled: {
+    backgroundColor: '#B0B0B0',
+  },
+  modalSaveText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalSaveTextDisabled: {
+    color: '#E0E0E0',
+  },
+  modalContent: {
+    flex: 1,
+  },
+  modalFormSection: {
+    backgroundColor: '#fff',
+    margin: 20,
+    padding: 20,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  modalSectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 20,
+  },
+  modalInputGroup: {
+    marginBottom: 16,
+  },
+  modalInputLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 6,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: '#fff',
+  },
+  modalRowInputs: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  modalSecuritySection: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#E8F5E8',
+    margin: 20,
+    marginTop: 10,
+    padding: 16,
+    borderRadius: 8,
+  },
+  modalSecurityIcon: {
+    marginRight: 12,
+    marginTop: 2,
+  },
+  modalSecurityText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#2E7D32',
+    lineHeight: 20,
+  },
+  
+  // Card Preview Styles
+  cardPreviewContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  cardPreview: {
+    width: '100%',
+    maxWidth: 340,
+    height: 200,
+    backgroundColor: '#1e3a8a',
+    borderRadius: 16,
+    padding: 20,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  cardPreviewTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  cardPreviewBank: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    letterSpacing: 1,
+  },
+  cardPreviewChip: {
+    width: 32,
+    height: 24,
+    backgroundColor: '#60a5fa',
+    borderRadius: 4,
+  },
+  cardPreviewMiddle: {
+    marginBottom: 30,
+  },
+  cardPreviewNumber: {
+    fontSize: 20,
+    fontWeight: '400',
+    color: '#fff',
+    letterSpacing: 2,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  cardPreviewBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  cardPreviewLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#e0e7ff',
+    marginBottom: 4,
+    letterSpacing: 0.5,
+  },
+  cardPreviewName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+    letterSpacing: 1,
+  },
+  cardPreviewExpiry: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+    letterSpacing: 1,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
 });
