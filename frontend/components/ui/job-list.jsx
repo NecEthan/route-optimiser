@@ -3,22 +3,18 @@ import { View, StyleSheet } from 'react-native';
 import Job from "./job";
 import { customerService } from '@/lib';
 
-const JobList = forwardRef(({ showEdit = false, onEdit, onJobPress, onCashPaymentChange, onCustomerCompleted }, ref) => {
+const JobList = forwardRef(({ showEdit = false, onEdit, onJobPress, onCashPaymentChange, onCustomerCompleted, selectedDate }, ref) => {
     const [customers, setCustomers] = useState([]);
 
-    useEffect(() => {
-        fetchCustomers();
-    }, []);
-
-    const fetchCustomers = async () => {
+    const fetchCustomers = useCallback(async () => {
         try {
             console.log('🔄 Fetching customers...');
             const customersData = await customerService.getAllCustomers();
             console.log('✅ Fetched customers:', customersData.length);
             
-            // Filter out customers completed today
-            const today = new Date().toISOString().split('T')[0]; // "2025-09-22"
-            console.log('📅 Today date for filtering:', today);
+            // Filter out customers completed on the selected date
+            const filterDate = selectedDate || new Date().toISOString().split('T')[0]; // Default to today if no date provided
+            console.log('📅 Filter date for customers:', filterDate);
             
             console.log('🔍 All customers data:');
             customersData.forEach((customer, index) => {
@@ -26,18 +22,22 @@ const JobList = forwardRef(({ showEdit = false, onEdit, onJobPress, onCashPaymen
             });
             
             const activeCustomers = customersData.filter((customer, index) => {
-                const isCompletedToday = customer.last_completed === today;
-                console.log(`🔍 Customer ${index + 1} (${customer.name}): last_completed="${customer.last_completed}" vs today="${today}" → ${isCompletedToday ? '❌ FILTERED OUT' : '✅ INCLUDED'}`);
-                return !isCompletedToday; // Only show if NOT completed today
+                const isCompletedOnSelectedDate = customer.last_completed === filterDate;
+                console.log(`🔍 Customer ${index + 1} (${customer.name}): last_completed="${customer.last_completed}" vs selected="${filterDate}" → ${isCompletedOnSelectedDate ? '❌ FILTERED OUT' : '✅ INCLUDED'}`);
+                return !isCompletedOnSelectedDate; // Only show if NOT completed on selected date
             });
-            console.log(`✅ Active customers for today: ${activeCustomers.length} (filtered from ${customersData.length} total)`);
+            console.log(`✅ Active customers for ${filterDate}: ${activeCustomers.length} (filtered from ${customersData.length} total)`);
             
             setCustomers(activeCustomers);
         } catch (error) {
             console.error("❌ Error fetching customers:", error);
             setCustomers([]); 
         }
-    };
+    }, [selectedDate]);
+
+    useEffect(() => {
+        fetchCustomers();
+    }, [fetchCustomers]);
 
     const handleJobToggle = (customerId, isChecked) => {
         // Handle customer service completion toggle
