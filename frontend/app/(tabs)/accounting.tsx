@@ -214,6 +214,26 @@ export default function AccountingScreen() {
   const totalExpenses = expenseTransactions.reduce((sum, t) => sum + t.amount, 0);
   const netProfit = totalIncome - totalExpenses;
 
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'paid': return '#28a745';
+      case 'pending': return '#ffc107';
+      case 'sent': return '#17a2b8';
+      case 'overdue': return '#dc3545';
+      default: return '#6c757d';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'paid': return 'checkmark-circle';
+      case 'pending': return 'time-outline';
+      case 'sent': return 'mail-outline';
+      case 'overdue': return 'alert-circle';
+      default: return 'help-circle-outline';
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -437,10 +457,37 @@ export default function AccountingScreen() {
                   <Text style={styles.transactionDescription} numberOfLines={2}>
                     {transaction.description}
                   </Text>
-                  <Text style={styles.transactionDescription} numberOfLines={2}>
-                    {transaction.status}
+                  {/* Enhanced Status Display */}
+                  <View style={styles.statusContainer}>
+                    <Ionicons 
+                      name={getStatusIcon(transaction.status)} 
+                      size={14} 
+                      color={getStatusColor(transaction.status)} 
+                    />
+                    <View style={[
+                      styles.statusBadge, 
+                      { backgroundColor: `${getStatusColor(transaction.status)}20` }
+                    ]}>
+                      <Text style={[
+                        styles.statusText, 
+                        { color: getStatusColor(transaction.status) }
+                      ]}>
+                        {transaction.status.toUpperCase()}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.transactionCategory}>
+                    {transaction.method && (
+                      <>
+                        <Ionicons 
+                          name={transaction.method === 'cash' ? 'cash' : transaction.method === 'card' ? 'card' : 'business'} 
+                          size={12} 
+                          color="#666" 
+                        />
+                        {' '}{transaction.category}
+                      </>
+                    )}
                   </Text>
-                  <Text style={styles.transactionCategory}>{transaction.category}</Text>
                 </View>
               </View>
               <View style={styles.transactionRight}>
@@ -454,6 +501,12 @@ export default function AccountingScreen() {
                 >
                   {transaction.type === 'expense' ? '-' : '+'}{formatCurrency(transaction.amount)}
                 </Text>
+                {/* Due Date for Pending Payments */}
+                {transaction.status === 'pending' && transaction.due_date && (
+                  <Text style={styles.dueDateText}>
+                    Due {formatDate(transaction.due_date)}
+                  </Text>
+                )}
               </View>
             </View>
           ))
@@ -678,11 +731,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#333',
-    marginBottom: 2,
+    marginBottom: 4,
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   transactionCategory: {
     fontSize: 14,
     color: '#666',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   transactionRight: {
     alignItems: 'flex-end',
@@ -690,6 +764,12 @@ const styles = StyleSheet.create({
   transactionAmount: {
     fontSize: 16,
     fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  dueDateText: {
+    fontSize: 12,
+    color: '#ffc107',
+    fontWeight: '500',
   },
   emptyState: {
     alignItems: 'center',
