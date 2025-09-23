@@ -252,10 +252,26 @@ export default function TodayScreen() {
         visible={showAddScheduleModal}
         onClose={handleCloseAddJobModal}
         onScheduleCreated={(schedule) => {
-          console.log('✅ Schedule created:', schedule);
+          console.log('✅ Schedule created with daily hours:', schedule.dailyHours);
+          console.log('📅 Working days:', schedule.workingDays);
+          console.log('⏰ Total weekly hours:', schedule.totalWeeklyHours);
+          
+          // Get selected days with hours for display
+          const selectedDaysWithHours = Object.entries(schedule.workingDays)
+            .filter(([_, selected]) => selected)
+            .map(([day, _]) => {
+              const hours = schedule.dailyHours[day as keyof typeof schedule.dailyHours];
+              return `${day.charAt(0).toUpperCase() + day.slice(1)}: ${hours}h`;
+            })
+            .join('\n');
+          
           Alert.alert(
             'Schedule Created!',
-            `Your ${schedule.hoursPerDay} hours/day, ${schedule.daysPerWeek} days/week schedule has been optimized.`
+            `Your weekly schedule:\n\n` +
+            `${selectedDaysWithHours}\n\n` +
+            `• ${schedule.daysCount} working days\n` +
+            `• Total: ${schedule.totalWeeklyHours} hours/week\n\n` +
+            `Each day has specific hours - perfect for AI optimization!`
           );
         }}
       />

@@ -5,7 +5,6 @@ import {
   Modal,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   Alert,
   Vibration,
 } from 'react-native';
@@ -19,18 +18,105 @@ interface AddScheduleModalProps {
 }
 
 interface ScheduleData {
-  hoursPerDay: number;
-  daysPerWeek: number;
+  dailyHours: {
+    monday: number;
+    tuesday: number;
+    wednesday: number;
+    thursday: number;
+    friday: number;
+    saturday: number;
+    sunday: number;
+  };
+  workingDays: {
+    monday: boolean;
+    tuesday: boolean;
+    wednesday: boolean;
+    thursday: boolean;
+    friday: boolean;
+    saturday: boolean;
+    sunday: boolean;
+  };
   totalWeeklyHours: number;
+  daysCount: number;
 }
 
 export default function AddScheduleModal({ visible, onClose, onScheduleCreated }: AddScheduleModalProps) {
-  const [hoursPerDay, setHoursPerDay] = useState('8');
-  const [daysPerWeek, setDaysPerWeek] = useState('5');
+  const [dailyHours, setDailyHours] = useState({
+    monday: 8,
+    tuesday: 8,
+    wednesday: 8,
+    thursday: 8,
+    friday: 8,
+    saturday: 0,
+    sunday: 0,
+  });
+  const [workingDays, setWorkingDays] = useState({
+    monday: true,
+    tuesday: true,
+    wednesday: true,
+    thursday: true,
+    friday: true,
+    saturday: false,
+    sunday: false,
+  });
 
   const resetForm = () => {
-    setHoursPerDay('8');
-    setDaysPerWeek('5');
+    setDailyHours({
+      monday: 8,
+      tuesday: 8,
+      wednesday: 8,
+      thursday: 8,
+      friday: 8,
+      saturday: 0,
+      sunday: 0,
+    });
+    setWorkingDays({
+      monday: true,
+      tuesday: true,
+      wednesday: true,
+      thursday: true,
+      friday: true,
+      saturday: false,
+      sunday: false,
+    });
+  };
+
+  const getWorkingDaysCount = () => {
+    return Object.values(workingDays).filter(Boolean).length;
+  };
+
+  const getTotalWeeklyHours = () => {
+    return Object.entries(workingDays)
+      .filter(([day, isWorking]) => isWorking)
+      .reduce((total, [day, _]) => total + dailyHours[day as keyof typeof dailyHours], 0);
+  };
+
+  const toggleWorkingDay = (day: keyof typeof workingDays) => {
+    const newWorkingDays = { ...workingDays, [day]: !workingDays[day] };
+    
+    // If turning off a day, set its hours to 0
+    // If turning on a day, set it to 8 hours default
+    const newDailyHours = { ...dailyHours };
+    if (!workingDays[day]) {
+      // Turning on
+      newDailyHours[day] = 8;
+    } else {
+      // Turning off
+      newDailyHours[day] = 0;
+    }
+    
+    // Ensure at least one day is selected
+    const selectedDays = Object.values(newWorkingDays).filter(Boolean).length;
+    if (selectedDays > 0) {
+      setWorkingDays(newWorkingDays);
+      setDailyHours(newDailyHours);
+    }
+  };
+
+  const updateDayHours = (day: keyof typeof dailyHours, hours: number) => {
+    if (hours >= 0 && hours <= 24) {
+      setDailyHours(prev => ({ ...prev, [day]: hours }));
+    }
   };
 
   const handleClose = () => {
@@ -39,42 +125,60 @@ export default function AddScheduleModal({ visible, onClose, onScheduleCreated }
   };
 
   const validateAndOptimize = () => {
-    const hours = parseFloat(hoursPerDay);
-    const days = parseInt(daysPerWeek);
+    const daysCount = getWorkingDaysCount();
+    const totalWeeklyHours = getTotalWeeklyHours();
 
     // Validation
-    if (isNaN(hours) || hours <= 0 || hours > 24) {
-      Alert.alert('Invalid Input', 'Hours per day must be between 1 and 24');
+    if (daysCount === 0) {
+      Alert.alert('Invalid Input', 'Please select at least one working day');
       return;
     }
 
-    if (isNaN(days) || days <= 0 || days > 7) {
-      Alert.alert('Invalid Input', 'Days per week must be between 1 and 7');
+    // Check if any working day has invalid hours
+    const invalidDays = Object.entries(workingDays)
+      .filter(([day, isWorking]) => isWorking && (dailyHours[day as keyof typeof dailyHours] <= 0 || dailyHours[day as keyof typeof dailyHours] > 24))
+      .map(([day, _]) => day.charAt(0).toUpperCase() + day.slice(1));
+
+    if (invalidDays.length > 0) {
+      Alert.alert('Invalid Input', `Please set valid hours (1-24) for: ${invalidDays.join(', ')}`);
       return;
     }
 
-    const totalWeeklyHours = hours * days;
     const scheduleData: ScheduleData = {
-      hoursPerDay: hours,
-      daysPerWeek: days,
+      dailyHours,
+      workingDays,
       totalWeeklyHours,
+      daysCount,
     };
 
     // Provide feedback with vibration
     Vibration.vibrate([100, 50, 100]);
 
+    // Get selected days list with hours
+    const selectedDaysWithHours = Object.entries(workingDays)
+      .filter(([_, selected]) => selected)
+      .map(([day, _]) => `${day.charAt(0).toUpperCase() + day.slice(1)} (${dailyHours[day as keyof typeof dailyHours]}h)`)
+      .join(', ');
+
     // Show optimization results
     Alert.alert(
       'Schedule Optimized!',
       `Your weekly schedule:\n\n` +
-      `• ${hours} hours per day\n` +
-      `• ${days} days per week\n` +
+      `${selectedDaysWithHours}\n\n` +
+      `• ${daysCount} working days\n` +
       `• ${totalWeeklyHours} total weekly hours\n\n` +
-      `This schedule provides a good work-life balance while maximizing productivity.`,
+      `This schedule provides flexible daily hours while maximizing productivity.\n\n` +
+      `Note: Ready for AI optimization once database table is created.`,
       [
         {
           text: 'Create Schedule',
           onPress: () => {
+            // Just pass the data back to parent component
+            // Database saving will be implemented after table creation
+            console.log('📅 Schedule data prepared for AI optimizer:', scheduleData);
+            console.log(`  - Daily hours:`, scheduleData.dailyHours);
+            console.log(`  - Working days: ${Object.entries(scheduleData.workingDays).filter(([_, selected]) => selected).map(([day, _]) => day).join(', ')}`);
+            console.log(`  - Total weekly hours: ${scheduleData.totalWeeklyHours}`);
             onScheduleCreated?.(scheduleData);
             handleClose();
           }
@@ -85,34 +189,6 @@ export default function AddScheduleModal({ visible, onClose, onScheduleCreated }
         }
       ]
     );
-  };
-
-  const incrementHours = () => {
-    const current = parseFloat(hoursPerDay) || 0;
-    if (current < 24) {
-      setHoursPerDay((current + 0.5).toString());
-    }
-  };
-
-  const decrementHours = () => {
-    const current = parseFloat(hoursPerDay) || 0;
-    if (current > 0.5) {
-      setHoursPerDay((current - 0.5).toString());
-    }
-  };
-
-  const incrementDays = () => {
-    const current = parseInt(daysPerWeek) || 0;
-    if (current < 7) {
-      setDaysPerWeek((current + 1).toString());
-    }
-  };
-
-  const decrementDays = () => {
-    const current = parseInt(daysPerWeek) || 0;
-    if (current > 1) {
-      setDaysPerWeek((current - 1).toString());
-    }
   };
 
   return (
@@ -135,79 +211,60 @@ export default function AddScheduleModal({ visible, onClose, onScheduleCreated }
         {/* Content */}
         <View style={styles.content}>
           <Text style={styles.description}>
-            Set your ideal work schedule to optimize your window cleaning route
+            Set hours for each working day
           </Text>
 
-          {/* Hours per Day */}
+          {/* Working Days with Individual Hours - Compact Grid */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Hours per Day</Text>
-            <View style={styles.inputRow}>
-              <TouchableOpacity 
-                style={styles.adjustButton} 
-                onPress={decrementHours}
-              >
-                <Ionicons name="remove" size={20} color="#007AFF" />
-              </TouchableOpacity>
-              
-              <TextInput
-                style={styles.input}
-                value={hoursPerDay}
-                onChangeText={setHoursPerDay}
-                keyboardType="decimal-pad"
-                placeholder="8"
-                textAlign="center"
-              />
-              
-              <TouchableOpacity 
-                style={styles.adjustButton} 
-                onPress={incrementHours}
-              >
-                <Ionicons name="add" size={20} color="#007AFF" />
-              </TouchableOpacity>
+            <Text style={styles.label}>Daily Schedule</Text>
+            <View style={styles.compactDaysGrid}>
+              {Object.entries(workingDays).map(([day, isWorking]) => (
+                <View key={day} style={styles.compactDayRow}>
+                  <TouchableOpacity
+                    style={[styles.compactDayToggle, isWorking && styles.compactDayToggleActive]}
+                    onPress={() => toggleWorkingDay(day as keyof typeof workingDays)}
+                  >
+                    <Text style={[styles.compactDayText, isWorking && styles.compactDayTextActive]}>
+                      {day.slice(0, 3).toUpperCase()}
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  {isWorking ? (
+                    <View style={styles.compactHoursInput}>
+                      <TouchableOpacity 
+                        style={styles.compactAdjustButton} 
+                        onPress={() => updateDayHours(day as keyof typeof dailyHours, dailyHours[day as keyof typeof dailyHours] - 0.5)}
+                      >
+                        <Ionicons name="remove" size={12} color="#007AFF" />
+                      </TouchableOpacity>
+                      
+                      <Text style={styles.compactHoursText}>
+                        {dailyHours[day as keyof typeof dailyHours]}h
+                      </Text>
+                      
+                      <TouchableOpacity 
+                        style={styles.compactAdjustButton} 
+                        onPress={() => updateDayHours(day as keyof typeof dailyHours, dailyHours[day as keyof typeof dailyHours] + 0.5)}
+                      >
+                        <Ionicons name="add" size={12} color="#007AFF" />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <Text style={styles.compactRestText}>OFF</Text>
+                  )}
+                </View>
+              ))}
             </View>
-            <Text style={styles.hint}>Between 1 and 24 hours</Text>
           </View>
 
-          {/* Days per Week */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Days per Week</Text>
-            <View style={styles.inputRow}>
-              <TouchableOpacity 
-                style={styles.adjustButton} 
-                onPress={decrementDays}
-              >
-                <Ionicons name="remove" size={20} color="#007AFF" />
-              </TouchableOpacity>
-              
-              <TextInput
-                style={styles.input}
-                value={daysPerWeek}
-                onChangeText={setDaysPerWeek}
-                keyboardType="number-pad"
-                placeholder="5"
-                textAlign="center"
-              />
-              
-              <TouchableOpacity 
-                style={styles.adjustButton} 
-                onPress={incrementDays}
-              >
-                <Ionicons name="add" size={20} color="#007AFF" />
-              </TouchableOpacity>
+          {/* Compact Preview and Button */}
+          <View style={styles.bottomSection}>
+            <View style={styles.compactPreview}>
+              <Text style={styles.compactPreviewTitle}>
+                {getTotalWeeklyHours()}h total • {getWorkingDaysCount()} days
+              </Text>
             </View>
-            <Text style={styles.hint}>Between 1 and 7 days</Text>
-          </View>
-
-          {/* Preview */}
-          <View style={styles.preview}>
-            <Text style={styles.previewTitle}>Weekly Summary</Text>
-            <Text style={styles.previewText}>
-              {parseFloat(hoursPerDay || '0') * parseInt(daysPerWeek || '0')} total hours per week
-            </Text>
-          </View>
-
-          {/* Optimize Button */}
-          <View style={styles.buttonContainer}>
+            
             <Button
               title="⚡ Optimize Schedule"
               onPress={validateAndOptimize}
@@ -253,78 +310,97 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   description: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#666',
     textAlign: 'center',
-    marginBottom: 30,
-    lineHeight: 24,
+    marginBottom: 20,
+    lineHeight: 20,
   },
   inputGroup: {
-    marginBottom: 30,
+    marginBottom: 20,
   },
   label: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 10,
+    marginBottom: 12,
+    textAlign: 'center',
   },
-  inputRow: {
+  compactDaysGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  compactDayRow: {
+    width: '48%',
+    flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
     marginBottom: 8,
   },
-  adjustButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  compactDayToggle: {
+    width: '100%',
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#f8f9fa',
+    marginBottom: 8,
+  },
+  compactDayToggleActive: {
+    backgroundColor: '#007AFF',
+  },
+  compactDayText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#666',
+    textAlign: 'center',
+  },
+  compactDayTextActive: {
+    color: '#fff',
+  },
+  compactHoursInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  compactAdjustButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#f0f8ff',
     justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: 15,
   },
-  input: {
-    width: 80,
-    height: 50,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#e0e0e0',
-    fontSize: 20,
+  compactHoursText: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#333',
+    minWidth: 32,
     textAlign: 'center',
   },
-  hint: {
-    fontSize: 12,
+  compactRestText: {
+    fontSize: 10,
     color: '#999',
-    textAlign: 'center',
-    fontStyle: 'italic',
+    fontWeight: '500',
   },
-  preview: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 30,
+  bottomSection: {
+    marginTop: 'auto',
+  },
+  compactPreview: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
   },
-  previewTitle: {
+  compactPreviewTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  previewText: {
-    fontSize: 24,
     fontWeight: 'bold',
     color: '#007AFF',
-  },
-  buttonContainer: {
-    paddingTop: 20,
+    textAlign: 'center',
   },
 });
