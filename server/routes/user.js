@@ -111,4 +111,54 @@ router.get('/profile', verifyToken, async (req, res) => {
   }
 });
 
+// GET /api/user/payment-method - Get user's payment method
+router.get('/payment-method', verifyToken, async (req, res) => {
+  try {
+    console.log('💳 Fetching payment method for user:', req.user.id);
+    
+    const { data, error } = await supabaseDB
+      .from('user_payment_methods')
+      .select('*')
+      .eq('user_id', req.user.id)
+      .eq('status', 'active')
+      .single();
+
+    if (error) {
+      console.error('Database error:', error);
+      
+      // If no payment method found, return empty result instead of error
+      if (error.code === 'PGRST116') {
+        return res.json({
+          success: true,
+          data: null,
+          message: 'No payment method found'
+        });
+      }
+      
+      throw error;
+    }
+
+    console.log('✅ Payment method data found:', {
+      id: data.id,
+      last_four: data.last_four,
+      card_type: data.card_type,
+      status: data.status
+    });
+    
+    res.json({
+      success: true,
+      data: data,
+      message: 'Payment method retrieved successfully'
+    });
+
+  } catch (error) {
+    console.error('Error fetching user payment method:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch payment method data',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

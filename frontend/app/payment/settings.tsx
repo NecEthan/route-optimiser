@@ -61,61 +61,29 @@ export default function PaymentSettingsScreen() {
 
 useEffect(() => {
   
-  fetchSubscription();
+  fetchPaymentMethod();
 }, []);
 
-const fetchSubscription = async () => {
+const fetchPaymentMethod = async () => {
     try {
-      const response = await settingsService.getUserSubscription();
-      console.log('User subscription data:', response);
+      const response = await settingsService.getUserPaymentMethod();
+      console.log('User payment method data:', response);
       
       if (response.success && response.data) {
-        // Convert the single subscription to the payment methods array format
+        // Set the single payment method
         setPaymentMethods([response.data]);
       } else {
-        // No subscription found, use empty array
+        // No payment method found, use empty array
         setPaymentMethods([]);
       }
     } catch (error) {
-      console.error('Error fetching user subscription:', error);
-      // Keep mock data on error for now
+      console.error('Error fetching user payment method:', error);
+      // Set empty array on error
+      setPaymentMethods([]);
     }
   };
   
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
-    {
-      id: 'pm_mock_001',
-      user_id: 'mock-user-id',
-      stripe_customer_id: 'cus_mock_001',
-      stripe_payment_method_id: 'pm_mock_001',
-      last_four: '4242',
-      card_type: 'visa',
-      expiration_month: 12,
-      expiration_year: 2025,
-      bank_name: null,
-      cardholder_name: 'John Doe',
-      is_default: true,
-      status: 'active',
-      created_at: '2025-01-01T00:00:00Z',
-      updated_at: '2025-01-01T00:00:00Z'
-    },
-    {
-      id: 'pm_mock_002',
-      user_id: 'mock-user-id',
-      stripe_customer_id: 'cus_mock_002',
-      stripe_payment_method_id: 'pm_mock_002',
-      last_four: '5555',
-      card_type: 'mastercard',
-      expiration_month: 8,
-      expiration_year: 2026,
-      bank_name: null,
-      cardholder_name: 'John Doe',
-      is_default: false,
-      status: 'active',
-      created_at: '2025-02-01T00:00:00Z',
-      updated_at: '2025-02-01T00:00:00Z'
-    }
-  ]);  const [billingHistory] = useState<BillingHistoryItem[]>([
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);  const [billingHistory] = useState<BillingHistoryItem[]>([
     {
       id: '1',
       date: '2025-09-01',
@@ -141,23 +109,6 @@ const fetchSubscription = async () => {
       description: 'Basic Plan - Monthly'
     }
   ]);
-
-  const getCardIcon = (cardType: string | null | undefined) => {
-    if (!cardType) return 'card';
-    
-    switch (cardType.toLowerCase()) {
-      case 'visa':
-        return 'card';
-      case 'mastercard':
-        return 'card';
-      case 'amex':
-        return 'card';
-      case 'discover':
-        return 'card';
-      default:
-        return 'card';
-    }
-  };
 
   const getCardName = (cardType: string | null | undefined) => {
     if (!cardType) return 'Credit Card';
@@ -393,70 +344,6 @@ const fetchSubscription = async () => {
     setShowAddCardModal(true);
   };
 
-  const handleRemoveCard = (cardId: string) => {
-    const card = paymentMethods.find(p => p.id === cardId);
-    const isDefault = card?.is_default;
-    const isOnlyCard = paymentMethods.length === 1;
-    
-    let title, message;
-    
-    if (isOnlyCard) {
-      title = 'Cannot Remove Card';
-      message = 'This is your only payment method. Add another card before removing this one.';
-      Alert.alert(title, message);
-      return;
-    }
-    
-    if (isDefault) {
-      title = 'Remove Default Payment Method';
-      message = `Removing card ending in ${card?.last_four} will set another card as default. Continue?`;
-    } else {
-      title = 'Remove Payment Method';
-      message = `Are you sure you want to remove card ending in ${card?.last_four}?`;
-    }
-    
-    Alert.alert(
-      title,
-      message,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            setLoading(true);
-            try {
-              const result = await settingsService.removePaymentMethod(cardId);
-              
-              if (result.success) {
-                // Remove from local state
-                setPaymentMethods(prev => {
-                  const remaining = prev.filter(method => method.id !== cardId);
-                  
-                  // If we removed the default card, make the first remaining card default
-                  if (isDefault && remaining.length > 0) {
-                    remaining[0].is_default = true;
-                  }
-                  
-                  return remaining;
-                });
-                
-                Alert.alert('Success', 'Payment method removed successfully.');
-              } else {
-                Alert.alert('Error', result.message || 'Failed to remove payment method.');
-              }
-            } catch (error) {
-              console.error('Remove card error:', error);
-              Alert.alert('Error', 'Failed to remove payment method.');
-            } finally {
-              setLoading(false);
-            }
-          }
-        }
-      ]
-    );
-  };
-
   const handleDownloadInvoice = (invoiceNumber: string) => {
     Alert.alert('Download Invoice', `This would download invoice ${invoiceNumber}`);
   };
@@ -536,20 +423,11 @@ const fetchSubscription = async () => {
 
               <View style={styles.cardActions}>
                 <Button
-                  title="Replace"
-                  onPress={() => handleReplaceCard(method.id)}
+                  title="Replace Card"
+                  onPress={() => handleReplaceCard(paymentMethods[0].id)}
                   variant="secondary"
                   size="small"
                 />
-                
-                {paymentMethods.length > 1 && (
-                  <TouchableOpacity
-                    onPress={() => handleRemoveCard(method.id)}
-                    style={styles.removeButton}
-                  >
-                    <Ionicons name="trash-outline" size={16} color="#dc3545" />
-                  </TouchableOpacity>
-                )}
               </View>
             </View>
           ))}

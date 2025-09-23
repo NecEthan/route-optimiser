@@ -37,6 +37,26 @@ class SettingsService {
         }
     }
 
+    async getUserPaymentMethod(): Promise<any> {
+        try {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/api/user/payment-method`, {
+                method: 'GET',
+                headers: await this.getAuthHeaders(),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('Fetched payment method:', data);
+            return data;
+        } catch (error) {
+            console.error('Error fetching payment method:', error);
+            throw error;
+        }
+    }
+   
     async addPaymentMethodWithToken(paymentData: { paymentMethodId: string; cardholderName: string; replaceCardId?: string | null }): Promise<any> {
         try {
             const response = await fetch(`${API_CONFIG.BASE_URL}/api/user/payment-method`, {
@@ -56,23 +76,6 @@ class SettingsService {
         }
     }
 
-    async removePaymentMethod(paymentMethodId: string): Promise<any> {
-        try {
-            const response = await fetch(`${API_CONFIG.BASE_URL}/api/user/payment-method/${paymentMethodId}`, {
-                method: 'DELETE',
-                headers: await this.getAuthHeaders(),
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('Error removing payment method:', error);
-            throw error;
-        }
-    }
 }
 
 export const settingsService = new SettingsService();
