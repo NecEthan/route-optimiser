@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, SafeAreaView, Alert, ScrollView, TouchableOpaci
 import { Ionicons } from '@expo/vector-icons';
 import JobList from "@/components/ui/job-list";
 import JobDetailsModal from "@/components/ui/job-details-modal";
-import AddJobModal from "@/components/ui/add-job-modal";
+import AddScheduleModal from "@/components/ui/add-schedule-modal";
 import Button from "@/components/ui/button";
 import { Customer } from "@/lib/customer-service";
 
@@ -18,7 +18,7 @@ interface DayOption {
 export default function TodayScreen() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [showCustomerDetails, setShowCustomerDetails] = useState(false);
-  const [showAddJobModal, setShowAddJobModal] = useState(false);
+  const [showAddScheduleModal, setShowAddScheduleModal] = useState(false);
   const [jobListKey, setJobListKey] = useState(0); // Force re-render of job list
   const [cashPaymentStates, setCashPaymentStates] = useState<{[key: string]: boolean}>({}); // Track cash payment status for each customer
   
@@ -84,17 +84,12 @@ export default function TodayScreen() {
     return dayOptions.findIndex(day => day.date === selectedDay);
   };
 
-  const handleAddJob = () => {
-    setShowAddJobModal(true);
-  };
-
-  const handleCustomerAdded = () => {
-    console.log('✅ Customer added successfully, refreshing customer list');
-    setJobListKey(prev => prev + 1); // Force refresh of job list
+  const handleAddSchedule = () => {
+    setShowAddScheduleModal(true);
   };
 
   const handleCloseAddJobModal = () => {
-    setShowAddJobModal(false);
+    setShowAddScheduleModal(false);
   };
 
   const handleCustomerPress = (customer: Customer) => {
@@ -210,8 +205,8 @@ export default function TodayScreen() {
         
         <View style={styles.buttonContainer}>
           <Button 
-            title="Add New Customer" 
-            onPress={handleAddJob}
+            title="Add Schedule" 
+            onPress={handleAddSchedule}
             variant="outline"
             size="medium"
           />
@@ -232,8 +227,6 @@ export default function TodayScreen() {
         
         <JobList 
           key={jobListKey} // Force re-render when key changes
-          showEdit={false} 
-          onEdit={() => {}} 
           onJobPress={handleCustomerPress}
           onCashPaymentChange={handleCashPaymentChange}
           onCustomerCompleted={handleCustomerCompleted}
@@ -254,11 +247,17 @@ export default function TodayScreen() {
         cashPaymentStatus={selectedCustomer ? cashPaymentStates[selectedCustomer.id] || false : false}
       />
 
-      {/* Add Customer Modal */}
-      <AddJobModal
-        visible={showAddJobModal}
+      {/* Add Schedule Modal */}
+      <AddScheduleModal
+        visible={showAddScheduleModal}
         onClose={handleCloseAddJobModal}
-        onCustomerAdded={handleCustomerAdded}
+        onScheduleCreated={(schedule) => {
+          console.log('✅ Schedule created:', schedule);
+          Alert.alert(
+            'Schedule Created!',
+            `Your ${schedule.hoursPerDay} hours/day, ${schedule.daysPerWeek} days/week schedule has been optimized.`
+          );
+        }}
       />
     </SafeAreaView>
   );
