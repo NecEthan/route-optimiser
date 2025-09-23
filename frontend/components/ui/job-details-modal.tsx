@@ -217,34 +217,37 @@ export default function JobDetailsModal({
   };
 
   const performJobCompletion = async () => {
-    console.log('🚀 Starting job completion for customer:', job?.id);
     if (!job?.id) return;
 
     setIsUpdating(true);
     try {
-      console.log('📝 Calling markServiceComplete...');
       const updatedCustomer = await customerService.markServiceComplete(job.id);
-      console.log('✅ Customer service marked as complete:', updatedCustomer);
-      console.log('📅 Updated customer last_completed:', updatedCustomer.last_completed);
+      // Add payment record
+      console.log(job, 'JOBBBBBBBBBBBBBBBBBBBB')
+      const currentDate = new Date().toISOString();
+      const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      // Generate shorter invoice number (under 50 chars)
+      const invoiceId = job.id.split('-')[0]; // Use first part of UUID
+      const timestamp = Date.now().toString().slice(-8); // Use last 8 digits of timestamp
+      const paymentRecord = {
+        job_id: null, // Set to null if this customer record doesn't correspond to a route_jobs entry
+        customer_id: job.id,  // Using job.id as customer_id since this is the customer record
+        user_id: job.user_id,  // Include user_id from the job record
+        invoice_number: `INV-${invoiceId}-${timestamp}`, // Much shorter: ~20 characters
+        amount: job.price || 0,  // price is already a number in Customer interface
+        status: job.payment_status ? 'paid' : 'pending',
+        method: job.payment_method || 'cash',
+        due_date: dueDate.toISOString().split('T')[0], // Extract date part only (YYYY-MM-DD)
+        sent_at: currentDate,
+        paid_at: job.payment_status ? currentDate : null,
+        notes: `Payment for job ${job.id} - ${job.description}`
+      };
+
+      await accountingService.addPayment(paymentRecord);
       
-      // Create payment record
-      console.log('💰 Creating payment record...');
-      await accountingService.addPayment({
-        customer_id: job.id, // Use customer's own ID since we're now customer-centric
-        amount: job.price,
-        method: cashPaymentStatus ? 'cash' : 'bank', // Set proper payment method
-        status: cashPaymentStatus ? 'paid' : 'pending', // Set payment status
-        notes: `Payment for: ${job.description || job.name}`
-      });
-      console.log(`✅ Payment created with status: ${cashPaymentStatus ? 'paid' : 'pending'}`);
-      
-      // Update parent component
       if (onJobUpdated) {
-        console.log('🔄 Calling onJobUpdated with updated customer...');
         onJobUpdated(updatedCustomer);
       }
-      console.log('(((((((((99999')
-      // Notify parent that customer is completed and should be removed from list
       if (onCustomerCompleted) {
         console.log(`📢 Modal calling onCustomerCompleted for customer ${job.id}`);
         onCustomerCompleted(job.id);

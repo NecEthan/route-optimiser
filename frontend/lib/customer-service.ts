@@ -12,6 +12,7 @@ export interface Customer {
   address: string; // NOT NULL
   price: number; // DECIMAL(10,2) NOT NULL
   frequency?: string;
+  payment_method?: string; // BOOLEAN (true for cash, false for bank)
   estimated_duration?: number; // INTEGER (minutes)
   created_at?: string;
   last_completed?: string; // DATE
@@ -136,6 +137,29 @@ class CustomerService {
       return data.data;
     } catch (error) {
       console.error('Update customer error:', error);
+      throw error;
+    }
+  }
+
+  // Patch customer (partial update)
+  async patchCustomer(id: string, customerData: Partial<CreateCustomerRequest>): Promise<Customer> {
+    try {
+      const headers = await authService.getAuthHeaders();
+      
+      const response = await fetch(buildUrl(API_CONFIG.ENDPOINTS.CUSTOMER_BY_ID(id)), {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(customerData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.data;
+    } catch (error) {
+      console.error('Patch customer error:', error);
       throw error;
     }
   }

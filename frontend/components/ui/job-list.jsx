@@ -44,18 +44,35 @@ const JobList = forwardRef(({ showEdit = false, onEdit, onJobPress, onCashPaymen
         console.log(`Customer ${customerId} service marked as ${isChecked ? 'completed' : 'incomplete'}`);
     };
 
-    const handleCashToggle = (customerId, isPaidInCash) => {
-        // Handle cash payment toggle for customer - no API call, just local state
-        console.log(`Customer ${customerId} payment updated locally: ${isPaidInCash ? 'paid in cash' : 'not paid in cash'}`);
+    const handleCashToggle = async (customerId, isPaidInCash) => {
+        console.log('🔍 handleCashToggle called with:---------------------', isPaidInCash);
         
-        // Update local state
-        setCustomers(prevCustomers => prevCustomers.map(customer => 
-            customer.id === customerId ? { ...customer, paid_in_cash: isPaidInCash } : customer
-        ));
-        
-        // Notify parent component about cash payment change
-        if (onCashPaymentChange) {
-            onCashPaymentChange(customerId, isPaidInCash);
+        try {
+            console.log(isPaidInCash, '_____-----____');
+            const paymentMethod = isPaidInCash ? 'cash' : 'card'; // cash/card
+            const paymentStatus = isPaidInCash;
+            
+            await customerService.patchCustomer(customerId, { 
+                payment_method: paymentMethod,
+                payment_status: paymentStatus
+            });
+            
+            setCustomers(prevCustomers => prevCustomers.map(customer => 
+                customer.id === customerId ? { 
+                    ...customer, 
+                    paid_in_cash: isPaidInCash,
+                    payment_method: paymentMethod,
+                    payment_status: paymentStatus
+                } : customer
+            ));
+            
+            // Notify parent component about cash payment change
+            if (onCashPaymentChange) {
+                onCashPaymentChange(customerId, isPaidInCash);
+            }
+        } catch (error) {
+            console.error(`❌ Error updating customer ${customerId} payment_method:`, error);
+            alert('Failed to update payment method. Please try again.');
         }
     };
 
@@ -93,7 +110,7 @@ const JobList = forwardRef(({ showEdit = false, onEdit, onJobPress, onCashPaymen
                     <Job 
                         job={customer} 
                         onToggle={(isChecked) => handleJobToggle(customer.id, isChecked)}
-                        onCashToggle={(isPaidInCash) => handleCashToggle(customer.id, isPaidInCash)}
+                        onCashToggle={(customerId, isPaidInCash) => handleCashToggle(customer.id, isPaidInCash)}
                         onEdit={onEdit}
                         onPress={() => handleJobPress(customer)}
                         onCompleted={() => removeCompletedCustomer(customer.id)}

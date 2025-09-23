@@ -284,6 +284,7 @@ router.patch('/:id', async (req, res) => {
       estimated_duration,
       last_completed,
       payment_status,
+      payment_method,
       exterior_windows,
       interior_windows,
       gutters,
@@ -305,6 +306,7 @@ router.patch('/:id', async (req, res) => {
     if (estimated_duration !== undefined) updateData.estimated_duration = estimated_duration ? parseInt(estimated_duration) : null;
     if (last_completed !== undefined) updateData.last_completed = last_completed;
     if (payment_status !== undefined) updateData.payment_status = payment_status;
+    if (payment_method !== undefined) updateData.payment_method = payment_method;
     if (status !== undefined) updateData.status = status;
     
     // Service type booleans

@@ -15,9 +15,10 @@ type JobProps = {
 
 export default function Job({ job, onToggle, onCashToggle, onEdit, onPress, onCompleted, showEdit = false }: JobProps) {
   // Track payment status using the payment_status boolean field
-  const [isPaidInCash, setIsPaidInCash] = useState(job.payment_status || false);
+  const [isPaidInCash, setIsPaidInCash] = useState(false);
 
   const handleCashToggle = () => {
+    console.log('🔍 handleCashToggle called with:--------------------+-', isPaidInCash);
     const newCashState = !isPaidInCash;
     setIsPaidInCash(newCashState);
     if (job.id) {

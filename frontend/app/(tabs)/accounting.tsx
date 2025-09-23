@@ -11,25 +11,38 @@ type TabType = 'income' | 'expenses' | 'profit';
 // Transaction interface for standardized display format
 interface Transaction {
   id: string;
-  date: string;
-  description: string;
-  amount: number;
-  type: 'income' | 'expense';
-  category: string;
-}
-
-interface Payment {
-  id: string;
+  job_id?: string;
+  customer_id?: string;
+  user_id?: string;
+  invoice_number?: string;
   amount: number;
   status: string; // 'pending', 'sent', 'paid', 'overdue'
-  method: string;
-  notes?: string;
-  customer_id?: string;
-  invoice_number?: string;
+  method?: string; // 'cash', 'bank', 'card'
   due_date?: string;
   sent_at?: string;
   paid_at?: string;
   created_at: string;
+  notes?: string;
+  date: string; // For display purposes (mapped from paid_at or created_at)
+  description: string; // For display purposes
+  type: 'income' | 'expense';
+  category: string; // For display purposes (mapped from method)
+}
+
+interface Payment {
+  id: string;
+  job_id?: string;
+  customer_id?: string;
+  user_id?: string;
+  invoice_number?: string;
+  amount: number;
+  status: string; // 'pending', 'sent', 'paid', 'overdue'
+  method?: string; // 'cash', 'bank', 'card'
+  due_date?: string;
+  sent_at?: string;
+  paid_at?: string;
+  created_at: string;
+  notes?: string;
   customers?: {
     name: string;
     email?: string;
@@ -90,7 +103,7 @@ export default function AccountingScreen() {
       const data = await response.json();
       if (data.success) {
         setPayments(data.data);
-        console.log('✅ Payments updated:', data.data.length, 'payments loaded');
+        console.log('✅ Payments updated:', payments, 'PAYMENTSSSS');
       } else {
         setError(data.message || 'Failed to fetch payments');
         console.error("Failed to fetch payments:", data.message);
@@ -162,6 +175,8 @@ export default function AccountingScreen() {
     date: expense.expense_date,
     description: expense.notes || `${expense.category} expense`,
     amount: typeof expense.amount === 'string' ? parseFloat(expense.amount) : expense.amount,
+    status: 'paid', // Expenses are considered paid when recorded
+    created_at: expense.expense_date, // Use expense_date as created_at
     type: 'expense' as const,
     category: expense.category
   }));
@@ -171,17 +186,28 @@ export default function AccountingScreen() {
     .filter(payment => payment.status === 'paid') // Only show paid payments as income
     .map(payment => ({
       id: payment.id,
-      date: payment.paid_at || payment.created_at,
-      description: payment.customers?.name 
-        ? `Payment from ${payment.customers.name}` 
-        : payment.notes || `${payment.method} payment`,
+      job_id: payment.job_id,
+      customer_id: payment.customer_id,
+      user_id: payment.user_id,
+      invoice_number: payment.invoice_number,
       amount: typeof payment.amount === 'string' ? parseFloat(payment.amount) : payment.amount,
+      status: payment.status,
+      method: payment.method,
+      due_date: payment.due_date,
+      sent_at: payment.sent_at,
+      paid_at: payment.paid_at,
+      created_at: payment.created_at,
+      notes: payment.notes,
+      date: payment.paid_at || payment.created_at, // For display
+      description: payment.customers?.name 
+        ? `Payment from ${payment.customers.name}${payment.invoice_number ? ` (Invoice: ${payment.invoice_number})` : ''}` 
+        : payment.notes || `${payment.method} payment`, // For display
       type: 'income' as const,
-      category: payment.method || 'cash'
+      category: payment.method || 'cash' // For display
     }));
 
   console.log("Fetched expenses:", expenseTransactions);
-  console.log("Fetched income payments:", incomeTransactions);
+  console.log("Fetched income payments ----____-------__--:", incomeTransactions);
   
   const totalIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
   const totalExpenses = expenseTransactions.reduce((sum, t) => sum + t.amount, 0);
@@ -409,6 +435,9 @@ export default function AccountingScreen() {
                 <View style={styles.transactionDetails}>
                   <Text style={styles.transactionDescription} numberOfLines={2}>
                     {transaction.description}
+                  </Text>
+                  <Text style={styles.transactionDescription} numberOfLines={2}>
+                    {transaction.status}
                   </Text>
                   <Text style={styles.transactionCategory}>{transaction.category}</Text>
                 </View>

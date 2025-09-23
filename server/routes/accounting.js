@@ -484,14 +484,17 @@ router.post('/payments', async (req, res) => {
     }
 
     const { 
-      amount, 
-      method, 
-      notes, 
-      customer_id, 
+      job_id,
+      customer_id,
+      user_id,
       invoice_number,
+      amount, 
       status,
+      method, 
       due_date,
-      paid_at 
+      sent_at,
+      paid_at,
+      notes
     } = req.body;
 
     // Validation
@@ -528,15 +531,17 @@ router.post('/payments', async (req, res) => {
     }
 
     const paymentData = {
-      user_id: req.user.id,
-      amount: parseFloat(amount),
-      method: method || 'cash',
-      status: status || 'pending',
-      notes: notes?.trim() || null,
+      user_id: user_id || req.user.id,  // Use provided user_id or fallback to authenticated user
+      job_id: job_id || null,
       customer_id: customer_id || null,
       invoice_number: invoice_number?.trim() || null,
+      amount: parseFloat(amount),
+      status: status || 'pending',
+      method: method || 'cash',
       due_date: due_date || null,
-      paid_at: paid_at || (status === 'paid' ? new Date().toISOString() : null)
+      sent_at: sent_at || null,
+      paid_at: paid_at || (status === 'paid' ? new Date().toISOString() : null),
+      notes: notes?.trim() || null
     };
 
     const { data, error } = await supabase
@@ -546,7 +551,8 @@ router.post('/payments', async (req, res) => {
       .single();
 
     if (error) {
-      console.error('Add payment error:', error);
+      console.error('Add payment error - Supabase error details:', error);
+      console.error('Payment data being inserted:', paymentData);
       throw error;
     }
 

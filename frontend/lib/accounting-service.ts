@@ -14,10 +14,16 @@ class AccountingService {
         method: 'POST',
         headers,
         body: JSON.stringify({
+          job_id: paymentData.job_id,
           customer_id: paymentData.customer_id,
+          user_id: paymentData.user_id,
+          invoice_number: paymentData.invoice_number,
           amount: paymentData.amount,
-          method: paymentData.method || 'cash',
           status: paymentData.status || 'pending',
+          method: paymentData.method || 'cash',
+          due_date: paymentData.due_date,
+          sent_at: paymentData.sent_at,
+          paid_at: paymentData.paid_at,
           notes: paymentData.notes || ''
         })
         });
