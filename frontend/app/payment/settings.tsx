@@ -5,6 +5,9 @@ import Button from "@/components/ui/button";
 import { Ionicons } from '@expo/vector-icons';
 import { settingsService } from '@/lib';
 
+// Import Stripe components using platform-specific resolution
+import { CardField, useStripe } from '@/lib/stripe-native';
+
 interface PaymentMethod {
   id: string; // UUID from the database
   user_id: string;
@@ -36,12 +39,24 @@ export default function PaymentSettingsScreen() {
   const [loading, setLoading] = useState(false);
   const [showAddCardModal, setShowAddCardModal] = useState(false);
   const [cardToReplace, setCardToReplace] = useState<string | null>(null);
+  
+  // Always call useStripe hook first
+  const stripeRaw = useStripe();
+  
+  // Then modify based on platform
+  const stripe = Platform.OS === 'web' 
+    ? { createPaymentMethod: null } 
+    : (stripeRaw || { createPaymentMethod: null });
+  
   const [newCard, setNewCard] = useState({
+    cardholderName: '',
+    cardComplete: false,
+    cardDetails: null as any, // Will hold Stripe card details
+    // Keep legacy fields for web fallback
     cardNumber: '',
     expiryMonth: '',
     expiryYear: '',
     cvc: '',
-    cardholderName: '',
   });
 
 useEffect(() => {
@@ -185,80 +200,180 @@ const fetchSubscription = async () => {
 
   const handleCardSubmit = async () => {
     // Validate inputs
-    const cardNumberClean = newCard.cardNumber.replace(/\s/g, '');
-    if (!cardNumberClean || cardNumberClean.length !== 16) {
-      Alert.alert('Error', 'Please enter a valid 16-digit card number');
-      return;
-    }
-
-    if (!newCard.expiryMonth || !newCard.expiryYear) {
-      Alert.alert('Error', 'Please enter card expiry date');
-      return;
-    }
-
-    if (!newCard.cvc || newCard.cvc.length < 3) {
-      Alert.alert('Error', 'Please enter a valid CVC');
-      return;
-    }
-
     if (!newCard.cardholderName.trim()) {
       Alert.alert('Error', 'Please enter cardholder name');
       return;
     }
 
+    // Check if using Stripe CardField or legacy form
+    const isUsingStripeCardField = CardField !== null && newCard.cardComplete;
+    const isUsingLegacyForm = CardField === null && newCard.cardNumber && newCard.expiryMonth && newCard.expiryYear && newCard.cvc;
+    
+    if (!isUsingStripeCardField && !isUsingLegacyForm) {
+      Alert.alert('Error', 'Please enter complete card details');
+      return;
+    }
+
     setLoading(true);
     try {
-      // Simulate API call to add payment method
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      if (CardField !== null && stripe?.createPaymentMethod) {
+        // REAL STRIPE VALIDATION - Mobile/Native
+        console.log('🔐 Creating payment method with Stripe CardField...');
+        
+        const { error, paymentMethod } = await stripe.createPaymentMethod({
+          paymentMethodType: 'Card',
+          paymentMethodData: {
+            billingDetails: {
+              name: newCard.cardholderName,
+            },
+          },
+        });
 
-      // Create new payment method object
-      const newPaymentMethod: PaymentMethod = {
-        id: `pm_new_${Date.now()}`,
-        user_id: 'current-user-id',
-        stripe_customer_id: 'cus_new_customer',
-        stripe_payment_method_id: `pm_${Date.now()}`,
-        last_four: cardNumberClean.slice(-4),
-        card_type: getCardTypeFromNumber(cardNumberClean),
-        expiration_month: parseInt(newCard.expiryMonth),
-        expiration_year: parseInt(newCard.expiryYear),
-        bank_name: null,
-        cardholder_name: newCard.cardholderName,
-        is_default: paymentMethods.length === 0, // First card is default
-        status: 'active',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+        if (error) {
+          console.error('❌ Stripe validation failed:', error);
+          
+          // Handle validation errors with generic message
+          let userFriendlyMessage = 'Please check your card details and try again.';
+          
+          if (error.message?.includes('number')) {
+            userFriendlyMessage = 'Please enter a valid card number.';
+          } else if (error.message?.includes('expiry') || error.message?.includes('month') || error.message?.includes('year')) {
+            userFriendlyMessage = 'Please enter a valid expiry date.';
+          } else if (error.message?.includes('cvc') || error.message?.includes('CVC')) {
+            userFriendlyMessage = 'Please enter a valid CVC code.';
+          } else if (error.message?.includes('expired')) {
+            userFriendlyMessage = 'This card has expired. Please use a different card.';
+          } else if (error.message?.includes('declined')) {
+            userFriendlyMessage = 'Your card was declined. Please try a different card.';
+          }
+          
+          Alert.alert('Card Validation Failed', userFriendlyMessage);
+          return;
+        }
 
-      // Add to payment methods list or replace existing
-      if (cardToReplace) {
-        // Replace the existing card
-        setPaymentMethods(prev => 
-          prev.map(method => 
-            method.id === cardToReplace 
-              ? { ...newPaymentMethod, is_default: method.is_default } // Keep same default status
-              : method
-          )
-        );
-        Alert.alert('Success', 'Payment method replaced successfully!');
+        if (!paymentMethod) {
+          console.error('❌ No payment method returned');
+          Alert.alert('Error', 'Failed to validate card details');
+          return;
+        }
+
+        console.log('✅ Stripe validated payment method:', paymentMethod.id);
+        console.log('💳 Card details:', {
+          brand: (paymentMethod as any).Card?.brand || 'unknown',
+          last4: (paymentMethod as any).Card?.last4 || 'xxxx',
+          exp_month: (paymentMethod as any).Card?.expMonth || 0,
+          exp_year: (paymentMethod as any).Card?.expYear || 0,
+        });
+
+        // Send validated token to backend
+        const result = await settingsService.addPaymentMethodWithToken({
+          paymentMethodId: paymentMethod.id, // Real validated Stripe token
+          cardholderName: newCard.cardholderName,
+          replaceCardId: cardToReplace,
+        });
+
+        if (result.success) {
+          if (cardToReplace) {
+            // Replace existing card
+            setPaymentMethods(prev => 
+              prev.map(method => 
+                method.id === cardToReplace 
+                  ? { 
+                      ...result.data, 
+                      is_default: method.is_default
+                    } 
+                  : method
+              )
+            );
+            Alert.alert('Success', 'Payment method replaced successfully!');
+          } else {
+            // Add new card
+            const newPaymentMethod = { ...result.data };
+            setPaymentMethods(prev => [...prev, newPaymentMethod]);
+            Alert.alert('Success', 'Payment method added successfully!');
+          }
+
+          // Reset form and close modal
+          setNewCard({
+            cardholderName: '',
+            cardComplete: false,
+            cardDetails: null,
+            cardNumber: '',
+            expiryMonth: '',
+            expiryYear: '',
+            cvc: '',
+          });
+          setCardToReplace(null);
+          setShowAddCardModal(false);
+        } else {
+          Alert.alert('Error', result.message || 'Failed to save payment method');
+        }
+
       } else {
-        // Add new card
-        setPaymentMethods(prev => [...prev, newPaymentMethod]);
-        Alert.alert('Success', 'Payment method added successfully!');
+        // LEGACY FORM VALIDATION - Web fallback (still uses mock data for demo)
+        console.log('⚠️ Using legacy form validation (web fallback)');
+        
+        // Basic validation for legacy form
+        const cardNumberClean = newCard.cardNumber.replace(/\s/g, '');
+        if (cardNumberClean.length !== 16) {
+          Alert.alert('Error', 'Please enter a valid 16-digit card number');
+          return;
+        }
+
+        // Simulate API call for demo purposes
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Create mock payment method object for demo
+        const mockPaymentMethod = {
+          id: `pm_new_${Date.now()}`,
+          user_id: 'current-user-id',
+          stripe_customer_id: 'cus_demo_customer',
+          stripe_payment_method_id: `pm_demo_${Date.now()}`,
+          last_four: cardNumberClean.slice(-4),
+          card_type: getCardTypeFromNumber(cardNumberClean),
+          expiration_month: parseInt(newCard.expiryMonth),
+          expiration_year: parseInt(newCard.expiryYear),
+          bank_name: null,
+          cardholder_name: newCard.cardholderName,
+          is_default: paymentMethods.length === 0,
+          status: 'active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        if (cardToReplace) {
+          // Replace existing card with mock data
+          setPaymentMethods(prev => 
+            prev.map(method => 
+              method.id === cardToReplace 
+                ? { ...mockPaymentMethod, is_default: method.is_default }
+                : method
+            )
+          );
+          Alert.alert('Success', 'Payment method replaced successfully! (Demo Mode)');
+        } else {
+          // Add new card with mock data
+          setPaymentMethods(prev => [...prev, mockPaymentMethod]);
+          Alert.alert('Success', 'Payment method added successfully! (Demo Mode)');
+        }
+
+        // Reset form and close modal
+        setNewCard({
+          cardholderName: '',
+          cardComplete: false,
+          cardDetails: null,
+          cardNumber: '',
+          expiryMonth: '',
+          expiryYear: '',
+          cvc: '',
+        });
+        setCardToReplace(null);
+        setShowAddCardModal(false);
       }
 
-      // Reset form and close modal
-      setNewCard({
-        cardNumber: '',
-        expiryMonth: '',
-        expiryYear: '',
-        cvc: '',
-        cardholderName: '',
-      });
-      setCardToReplace(null);
-      setShowAddCardModal(false);
     } catch (err) {
-      console.error('Failed to add payment method:', err);
-      Alert.alert('Error', 'Failed to add payment method. Please try again.');
+      console.error('❌ Payment method creation failed:', err);
+      Alert.alert('Error', 'Failed to process payment method. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -582,16 +697,16 @@ const fetchSubscription = async () => {
                 <View style={styles.cardPreview}>
                   <View style={styles.cardPreviewTop}>
                     <Text style={styles.cardPreviewBank}>
-                      {getCardTypeFromNumber(newCard.cardNumber.replace(/\s/g, '')) === 'visa' ? 'VISA' :
-                       getCardTypeFromNumber(newCard.cardNumber.replace(/\s/g, '')) === 'mastercard' ? 'MASTERCARD' :
-                       getCardTypeFromNumber(newCard.cardNumber.replace(/\s/g, '')) === 'amex' ? 'AMEX' : 'CARD'}
+                      {newCard.cardDetails?.brand?.toUpperCase() || 
+                       getCardTypeFromNumber(newCard.cardNumber.replace(/\s/g, ''))?.toUpperCase() || 'CARD'}
                     </Text>
                     <View style={styles.cardPreviewChip} />
                   </View>
                   
                   <View style={styles.cardPreviewMiddle}>
                     <Text style={styles.cardPreviewNumber}>
-                      {newCard.cardNumber || '•••• •••• •••• ••••'}
+                      {newCard.cardDetails?.last4 ? `•••• •••• •••• ${newCard.cardDetails.last4}` :
+                       newCard.cardNumber || '•••• •••• •••• ••••'}
                     </Text>
                   </View>
                   
@@ -599,13 +714,15 @@ const fetchSubscription = async () => {
                     <View>
                       <Text style={styles.cardPreviewLabel}>CARD HOLDER</Text>
                       <Text style={styles.cardPreviewName}>
-                        {newCard.cardholderName || 'YOUR NAME'}
+                        {newCard.cardholderName.toUpperCase() || 'YOUR NAME'}
                       </Text>
                     </View>
                     <View>
                       <Text style={styles.cardPreviewLabel}>EXPIRES</Text>
                       <Text style={styles.cardPreviewExpiry}>
-                        {newCard.expiryMonth && newCard.expiryYear 
+                        {newCard.cardDetails?.expiryMonth && newCard.cardDetails?.expiryYear 
+                          ? `${newCard.cardDetails.expiryMonth.toString().padStart(2, '0')}/${newCard.cardDetails.expiryYear.toString().slice(-2)}`
+                          : newCard.expiryMonth && newCard.expiryYear 
                           ? `${newCard.expiryMonth.padStart(2, '0')}/${newCard.expiryYear.slice(-2)}`
                           : 'MM/YY'
                         }
@@ -618,54 +735,87 @@ const fetchSubscription = async () => {
               {/* Form Fields */}
               <View style={styles.modalFormSection}>
                 <View style={styles.modalInputGroup}>
-                  <Text style={styles.modalInputLabel}>Card Number</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    placeholder="1234 5678 9012 3456"
-                    value={newCard.cardNumber}
-                    onChangeText={(text) => setNewCard(prev => ({ ...prev, cardNumber: formatCardNumber(text) }))}
-                    keyboardType="numeric"
-                    maxLength={19}
-                  />
-                </View>
-
-                <View style={styles.modalRowInputs}>
-                  <View style={[styles.modalInputGroup, { flex: 1, marginRight: 10 }]}>
-                    <Text style={styles.modalInputLabel}>MM</Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="12"
-                      value={newCard.expiryMonth}
-                      onChangeText={(text) => setNewCard(prev => ({ ...prev, expiryMonth: formatExpiryMonth(text) }))}
-                      keyboardType="numeric"
-                      maxLength={2}
+                  <Text style={styles.modalInputLabel}>Card Information</Text>
+                  {CardField ? (
+                    <CardField
+                      postalCodeEnabled={false}
+                      placeholders={{
+                        number: '4242 4242 4242 4242',
+                      }}
+                      cardStyle={{
+                        backgroundColor: '#FFFFFF',
+                        textColor: '#000000',
+                        borderColor: '#ddd',
+                        borderWidth: 1,
+                        borderRadius: 8,
+                      }}
+                      style={styles.cardField}
+                      onCardChange={(details: any) => {
+                        console.log('💳 Card details changed:', details);
+                        setNewCard(prev => ({
+                          ...prev,
+                          cardComplete: details.complete || false,
+                          cardDetails: details,
+                        }));
+                      }}
                     />
-                  </View>
-                  
-                  <View style={[styles.modalInputGroup, { flex: 1, marginRight: 10 }]}>
-                    <Text style={styles.modalInputLabel}>YYYY</Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="2027"
-                      value={newCard.expiryYear}
-                      onChangeText={(text) => setNewCard(prev => ({ ...prev, expiryYear: formatExpiryYear(text) }))}
-                      keyboardType="numeric"
-                      maxLength={4}
-                    />
-                  </View>
-                  
-                  <View style={[styles.modalInputGroup, { flex: 1 }]}>
-                    <Text style={styles.modalInputLabel}>CVC</Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="123"
-                      value={newCard.cvc}
-                      onChangeText={(text) => setNewCard(prev => ({ ...prev, cvc: formatCVC(text) }))}
-                      keyboardType="numeric"
-                      maxLength={4}
-                      secureTextEntry
-                    />
-                  </View>
+                  ) : (
+                    <View style={styles.stripeUnavailable}>
+                      <Text style={styles.stripeUnavailableText}>
+                        Secure card input not available on web. Using legacy form for demo.
+                      </Text>
+                      <TextInput
+                        style={styles.modalInput}
+                        placeholder="Card Number (Test: 4242 4242 4242 4242)"
+                        value={newCard.cardNumber}
+                        onChangeText={(text) => setNewCard(prev => ({ 
+                          ...prev, 
+                          cardNumber: formatCardNumber(text),
+                        }))}
+                        keyboardType="numeric"
+                        maxLength={19}
+                      />
+                      
+                      <View style={styles.modalRowInputs}>
+                        <View style={[styles.modalInputGroup, { flex: 1, marginRight: 10 }]}>
+                          <Text style={styles.modalInputLabel}>MM</Text>
+                          <TextInput
+                            style={styles.modalInput}
+                            placeholder="12"
+                            value={newCard.expiryMonth}
+                            onChangeText={(text) => setNewCard(prev => ({ ...prev, expiryMonth: formatExpiryMonth(text) }))}
+                            keyboardType="numeric"
+                            maxLength={2}
+                          />
+                        </View>
+                        
+                        <View style={[styles.modalInputGroup, { flex: 1, marginRight: 10 }]}>
+                          <Text style={styles.modalInputLabel}>YYYY</Text>
+                          <TextInput
+                            style={styles.modalInput}
+                            placeholder="2027"
+                            value={newCard.expiryYear}
+                            onChangeText={(text) => setNewCard(prev => ({ ...prev, expiryYear: formatExpiryYear(text) }))}
+                            keyboardType="numeric"
+                            maxLength={4}
+                          />
+                        </View>
+                        
+                        <View style={[styles.modalInputGroup, { flex: 1 }]}>
+                          <Text style={styles.modalInputLabel}>CVC</Text>
+                          <TextInput
+                            style={styles.modalInput}
+                            placeholder="123"
+                            value={newCard.cvc}
+                            onChangeText={(text) => setNewCard(prev => ({ ...prev, cvc: formatCVC(text) }))}
+                            keyboardType="numeric"
+                            maxLength={4}
+                            secureTextEntry
+                          />
+                        </View>
+                      </View>
+                    </View>
+                  )}
                 </View>
 
                 <View style={styles.modalInputGroup}>
@@ -1088,5 +1238,26 @@ const styles = StyleSheet.create({
     color: '#fff',
     letterSpacing: 1,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  
+  // Stripe CardField styles
+  cardField: {
+    width: '100%',
+    height: 50,
+    marginVertical: 10,
+  },
+  stripeUnavailable: {
+    padding: 20,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginBottom: 10,
+  },
+  stripeUnavailableText: {
+    textAlign: 'center',
+    color: '#666',
+    fontSize: 14,
+    marginBottom: 10,
   },
 });
