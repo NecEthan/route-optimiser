@@ -8,7 +8,6 @@ import AddExpenseModal from '@/components/ui/add-expense-modal';
 
 type TabType = 'income' | 'expenses' | 'profit';
 
-// Transaction interface for standardized display format
 interface Transaction {
   id: string;
   job_id?: string;
@@ -178,7 +177,7 @@ export default function AccountingScreen() {
     amount: typeof expense.amount === 'string' ? parseFloat(expense.amount) : expense.amount,
     status: 'paid', // Expenses are considered paid when recorded
     created_at: expense.expense_date, // Use expense_date as created_at
-    type: 'expense' as const,
+    type: 'expense',
     category: expense.category
   }));
 
@@ -207,10 +206,9 @@ export default function AccountingScreen() {
       category: payment.method || 'cash' // For display
     }));
 
-  console.log("Fetched expenses:", expenseTransactions);
-  console.log("Fetched income payments ----____-------__--:", incomeTransactions);
-  
-  const totalIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
+  const filteredPaidTransactions = incomeTransactions.filter(payment => payment.status === 'paid');
+
+  const totalIncome = filteredPaidTransactions.reduce((sum, t) => sum + t.amount, 0);
   const totalExpenses = expenseTransactions.reduce((sum, t) => sum + t.amount, 0);
   const netProfit = totalIncome - totalExpenses;
 
