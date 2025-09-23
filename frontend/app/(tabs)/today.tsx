@@ -59,12 +59,7 @@ export default function TodayScreen() {
   };
 
   const handleCustomerUpdated = (updatedCustomer: Customer) => {
-    console.log('🔄 Customer updated:', updatedCustomer.name, 'Last completed:', updatedCustomer.last_completed);
-    
-    // Update the selected customer with the new data from server
     setSelectedCustomer(updatedCustomer);
-    
-    console.log('✅ Selected customer state updated with server response');
   };
 
   const handleCustomerCompleted = (customerId: string) => {

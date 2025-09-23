@@ -174,7 +174,6 @@ class CustomerService {
         headers,
         body: JSON.stringify({
           last_completed: new Date().toISOString().split('T')[0], // Today's date
-          payment_status: false, // Will be updated when payment is processed
         })
       });
 

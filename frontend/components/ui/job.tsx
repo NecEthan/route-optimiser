@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { Customer } from '@/lib/customer-service';
@@ -14,8 +14,13 @@ type JobProps = {
 };
 
 export default function Job({ job, onToggle, onCashToggle, onEdit, onPress, onCompleted, showEdit = false }: JobProps) {
-  // Track payment status using the payment_status boolean field
-  const [isPaidInCash, setIsPaidInCash] = useState(false);
+  // Track payment status using the payment_status boolean field from the job data
+  const [isPaidInCash, setIsPaidInCash] = useState(job.payment_status || false);
+
+  // Update state when job data changes
+  useEffect(() => {
+    setIsPaidInCash(job.payment_status || false);
+  }, [job.payment_status]);
 
   const handleCashToggle = () => {
     console.log('🔍 handleCashToggle called with:--------------------+-', isPaidInCash);

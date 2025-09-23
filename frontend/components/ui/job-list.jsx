@@ -49,7 +49,7 @@ const JobList = forwardRef(({ showEdit = false, onEdit, onJobPress, onCashPaymen
         
         try {
             console.log(isPaidInCash, '_____-----____');
-            const paymentMethod = isPaidInCash ? 'cash' : 'card'; // cash/card
+            const paymentMethod = isPaidInCash ? 'cash' : 'card';
             const paymentStatus = isPaidInCash;
             
             await customerService.patchCustomer(customerId, { 

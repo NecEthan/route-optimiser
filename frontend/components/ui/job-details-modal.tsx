@@ -249,7 +249,6 @@ export default function JobDetailsModal({
         onJobUpdated(updatedCustomer);
       }
       if (onCustomerCompleted) {
-        console.log(`📢 Modal calling onCustomerCompleted for customer ${job.id}`);
         onCustomerCompleted(job.id);
       } else {
         console.log('❌ Modal: onCustomerCompleted callback not provided');

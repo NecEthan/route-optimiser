@@ -101,6 +101,7 @@ export default function AccountingScreen() {
       });
 
       const data = await response.json();
+      console.log(data, 'DATA FROM PAYMENTS API');
       if (data.success) {
         setPayments(data.data);
         console.log('✅ Payments updated:', payments, 'PAYMENTSSSS');
@@ -183,7 +184,7 @@ export default function AccountingScreen() {
 
   // Convert API payments to Transaction format for display (income)
   const incomeTransactions: Transaction[] = payments
-    .filter(payment => payment.status === 'paid') // Only show paid payments as income
+    // .filter(payment => payment.status === 'paid')
     .map(payment => ({
       id: payment.id,
       job_id: payment.job_id,
