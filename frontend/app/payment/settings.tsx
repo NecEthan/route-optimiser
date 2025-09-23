@@ -62,6 +62,7 @@ export default function PaymentSettingsScreen() {
 useEffect(() => {
   
   fetchPaymentMethod();
+  fetchSubscription();
 }, []);
 
 const fetchPaymentMethod = async () => {
@@ -82,8 +83,25 @@ const fetchPaymentMethod = async () => {
       setPaymentMethods([]);
     }
   };
+
+const fetchSubscription = async () => {
+    try {
+      const response = await settingsService.getUserSubscription();
+      console.log('User subscription data:', response);
+      
+      if (response.success && response.data) {
+        setSubscription(response.data);
+      } else {
+        setSubscription(null);
+      }
+    } catch (error) {
+      console.error('Error fetching user subscription:', error);
+      setSubscription(null);
+    }
+  };
   
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);  const [billingHistory] = useState<BillingHistoryItem[]>([
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [subscription, setSubscription] = useState<any>(null);  const [billingHistory] = useState<BillingHistoryItem[]>([
     {
       id: '1',
       date: '2025-09-01',
@@ -437,33 +455,44 @@ const fetchPaymentMethod = async () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Billing Information</Text>
           <View style={styles.billingInfoCard}>
-            {paymentMethods.length > 0 && (
+            {subscription ? (
               <>
                 <View style={styles.billingRow}>
                   <Text style={styles.billingLabel}>Subscription:</Text>
-                                    <Text style={styles.billingValue}>Basic Plan</Text>
+                  <Text style={styles.billingValue}>{subscription.plan_name || 'N/A'}</Text>
                 </View>
                 <View style={styles.billingRow}>
                   <Text style={styles.billingLabel}>Billing Frequency</Text>
-                  <Text style={styles.billingValue}>Monthly</Text>
+                  <Text style={styles.billingValue}>{subscription.billing_frequency || 'N/A'}</Text>
                 </View>
                 <View style={styles.billingRow}>
                   <Text style={styles.billingLabel}>Amount</Text>
-                  <Text style={styles.billingValue}>$29.99/month</Text>
+                  <Text style={styles.billingValue}>
+                    {subscription.amount ? `$${subscription.amount.toFixed(2)}/${subscription.billing_frequency?.toLowerCase() || 'period'}` : 'N/A'}
+                  </Text>
                 </View>
                 <View style={styles.billingRow}>
                   <Text style={styles.billingLabel}>Next Billing Date</Text>
-                  <Text style={styles.billingValue}>{formatDate(new Date().toISOString())}</Text>
+                  <Text style={styles.billingValue}>
+                    {subscription.next_billing_date 
+                      ? formatDate(subscription.next_billing_date) 
+                      : 'N/A'
+                    }
+                  </Text>
                 </View>
                 <View style={styles.billingRow}>
                   <Text style={styles.billingLabel}>Status:</Text>
-                  <Text style={[styles.billingValue, { color: paymentMethods[0].status === 'active' ? '#28a745' : '#dc3545' }]}>
-                    {paymentMethods[0].status.charAt(0).toUpperCase() + paymentMethods[0].status.slice(1)}
+                  <Text style={[styles.billingValue, { color: subscription.status === 'active' ? '#28a745' : '#dc3545' }]}>
+                    {subscription.status ? subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1) : 'N/A'}
                   </Text>
                 </View>
               </>
-            )}
-            {paymentMethods.length === 0 && (
+            ) : paymentMethods.length > 0 ? (
+              <View style={styles.billingRow}>
+                <Text style={styles.billingLabel}>Loading subscription...</Text>
+                <Text style={styles.billingValue}>-</Text>
+              </View>
+            ) : (
               <View style={styles.billingRow}>
                 <Text style={styles.billingLabel}>No active subscription</Text>
                 <Text style={styles.billingValue}>-</Text>
