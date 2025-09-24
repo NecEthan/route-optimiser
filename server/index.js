@@ -9,6 +9,7 @@ const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const nodemailer = require('nodemailer');
+const fetch = require('node-fetch');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -224,6 +225,66 @@ app.get('/health', async (req, res) => {
     console.error('❌ Health check error:', error);
     res.status(500).json({ 
       status: 'error', 
+      message: error.message
+    });
+  }
+});
+
+// Google Places Proxy endpoint (must be BEFORE authenticated routes)
+// CORS middleware for Google Places proxy
+app.use('/api/places-details', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.header(
+    'Access-Control-Allow-Headers',
+    'Content-Type,X-Goog-Api-Key,X-Goog-SessionToken,X-Goog-FieldMask'
+  );
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
+app.get('/api/places-details/:placeId', async (req, res) => {
+  try {
+    const { placeId } = req.params;
+    const { languageCode } = req.query;
+
+    if (!placeId) {
+      return res.status(400).json({
+        error: 'Missing required parameter: placeId'
+      });
+    }
+
+    // Forward required headers from the client
+    const headers = {};
+    if (req.header('X-Goog-Api-Key'))
+      headers['X-Goog-Api-Key'] = req.header('X-Goog-Api-Key');
+    if (req.header('X-Goog-SessionToken'))
+      headers['X-Goog-SessionToken'] = req.header('X-Goog-SessionToken');
+    if (req.header('X-Goog-FieldMask'))
+      headers['X-Goog-FieldMask'] = req.header('X-Goog-FieldMask');
+
+    console.log('🔍 Fetching place details for:', placeId);
+    console.log('🔑 Headers:', Object.keys(headers));
+
+    // Use the new Google Places API (v1) format
+    let url = `https://places.googleapis.com/v1/places/${placeId}`;
+    if (languageCode) {
+      url += `?languageCode=${encodeURIComponent(languageCode)}`;
+    }
+
+    const response = await fetch(url, { headers });
+    const data = await response.json();
+    
+    console.log('📍 Google Places API response:', data);
+    
+    res.json(data);
+    
+  } catch (error) {
+    console.error('❌ Error fetching place details:', error);
+    res.status(500).json({
+      error: 'Failed to fetch place details',
       message: error.message
     });
   }

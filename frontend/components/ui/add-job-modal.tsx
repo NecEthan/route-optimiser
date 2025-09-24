@@ -237,25 +237,64 @@ export default function AddJobModal({ visible, onClose, onCustomerAdded }: AddCu
               <View style={styles.googlePlacesContainer}>
                 <GooglePlacesTextInput
                   apiKey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? ''}
+                    fetchDetails={true} 
+                                        detailsProxyUrl="http://localhost:3000/api/places-details"
                   onPlaceSelect={(place: any) => {
-                    console.log('Selected place:', place);
-                    const address = place.formatted_address || place.description || '';
-                    setFormData(prev => ({ ...prev, address }));
+                    console.log('🎯 SELECTED PLACE:', place);
+                    console.log('📋 FULL PLACE OBJECT:', JSON.stringify(place, null, 2));
                     
-                    // Update customerAddress with coordinates if available
-                    if (place.geometry && place.geometry.location) {
-                      setCustomerAddress({
-                        address,
-                        lat: place.geometry.location.lat,
-                        lng: place.geometry.location.lng
-                      });
+                    // Extract address from place object
+                    const address = place.text?.text || 
+                                  place.structuredFormat?.mainText || 
+                                  place.description || 
+                                  place.formatted_address || 
+                                  '';
+                    
+                    console.log('📍 EXTRACTED ADDRESS:', address);
+                    
+                    // Extract coordinates from the details object (from our proxy)
+                    let lat = 0;
+                    let lng = 0;
+                    
+                    console.log('🔍 COORDINATE SEARCH:');
+                    console.log('place.details:', place.details);
+                    
+                    if (place.details?.location) {
+                      // New Google Places API (v1) response format
+                      lat = place.details.location.latitude;
+                      lng = place.details.location.longitude;
+                      console.log('✅ COORDINATES FROM details.location (Places API v1):', { lat, lng });
+                    } else if (place.details?.result?.geometry?.location) {
+                      // Old Google Places Details API response structure
+                      lat = place.details.result.geometry.location.lat;
+                      lng = place.details.result.geometry.location.lng;
+                      console.log('✅ COORDINATES FROM details.result.geometry.location:', { lat, lng });
+                    } else if (place.details?.geometry?.location) {
+                      // Alternative structure
+                      lat = place.details.geometry.location.lat;
+                      lng = place.details.geometry.location.lng;
+                      console.log('✅ COORDINATES FROM details.geometry.location:', { lat, lng });
+                    } else if (place.geometry?.location) {
+                      // Direct geometry access
+                      lat = place.geometry.location.lat;
+                      lng = place.geometry.location.lng;
+                      console.log('✅ COORDINATES FROM geometry.location:', { lat, lng });
                     } else {
-                      setCustomerAddress({
-                        address,
-                        lat: 0,
-                        lng: 0
-                      });
+                      console.log('❌ NO COORDINATES FOUND');
+                      console.log('🔑 Available properties:', Object.keys(place));
+                      if (place.details) {
+                        console.log('🔑 Details properties:', Object.keys(place.details));
+                      }
                     }
+                    
+                    console.log('🎯 FINAL RESULT - LAT:', lat, 'LNG:', lng);
+                    
+                    setFormData(prev => ({ ...prev, address }));
+                    setCustomerAddress({
+                      address,
+                      lat,
+                      lng
+                    });
                   }}
                 />
               </View>
