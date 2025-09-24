@@ -14,6 +14,7 @@ import { Customer } from '@/lib';
 import { buildUrl } from '@/lib/api-config';
 import { authService } from '@/lib/auth-service';
 import Button from './button';
+import GooglePlacesTextInput from 'react-native-google-places-textinput';
 
 export interface AddCustomerModalProps {
   visible: boolean;
@@ -22,6 +23,9 @@ export interface AddCustomerModalProps {
 }
 
 export default function AddJobModal({ visible, onClose, onCustomerAdded }: AddCustomerModalProps) {
+  // Debug: Check if API key is loaded
+  console.log('Google API Key:', process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ? 'Loaded' : 'Not loaded');
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -39,6 +43,7 @@ export default function AddJobModal({ visible, onClose, onCustomerAdded }: AddCu
   });
   
   const [isCreating, setIsCreating] = useState(false);
+  const [customerAddress, setCustomerAddress] = useState<{ address: string; lat: number; lng: number } | null>(null);
   const [showFrequencyPicker, setShowFrequencyPicker] = useState(false);
 
   useEffect(() => {
@@ -229,15 +234,31 @@ export default function AddJobModal({ visible, onClose, onCustomerAdded }: AddCu
             {/* Address */}
             <View style={styles.fieldContainer}>
               <Text style={styles.label}>Address</Text>
-              <TextInput
-                style={[styles.input, styles.multilineInput]}
-                value={formData.address}
-                onChangeText={(text) => setFormData(prev => ({ ...prev, address: text }))}
-                placeholder="Enter customer address..."
-                multiline
-                numberOfLines={2}
-                textAlignVertical="top"
-              />
+              <View style={styles.googlePlacesContainer}>
+                <GooglePlacesTextInput
+                  apiKey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? ''}
+                  onPlaceSelect={(place: any) => {
+                    console.log('Selected place:', place);
+                    const address = place.formatted_address || place.description || '';
+                    setFormData(prev => ({ ...prev, address }));
+                    
+                    // Update customerAddress with coordinates if available
+                    if (place.geometry && place.geometry.location) {
+                      setCustomerAddress({
+                        address,
+                        lat: place.geometry.location.lat,
+                        lng: place.geometry.location.lng
+                      });
+                    } else {
+                      setCustomerAddress({
+                        address,
+                        lat: 0,
+                        lng: 0
+                      });
+                    }
+                  }}
+                />
+              </View>
             </View>
 
             {/* Service Description */}
@@ -577,5 +598,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 4,
+  },
+  // Google Places Input Styles
+  googlePlacesContainer: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    overflow: 'hidden',
+    position: 'relative',
+    // Add padding to ensure clear button doesn't overlap with border
+    paddingRight: 2,
   },
 });
