@@ -112,6 +112,8 @@ router.post('/', async (req, res) => {
       address, 
       price, 
       frequency, 
+      lat,
+      lng,
       estimated_duration,
       payment_status,
       exterior_windows,
@@ -136,15 +138,22 @@ router.post('/', async (req, res) => {
       address,
       price: parseFloat(price),
       frequency: frequency || null,
+      // TODO: Add latitude/longitude columns to database schema
+      // latitude: lat ? parseFloat(lat) : null,
+      // longitude: lng ? parseFloat(lng) : null,
       estimated_duration: estimated_duration ? parseInt(estimated_duration) : null,
       payment_status: payment_status || false,
       exterior_windows: exterior_windows || false,
       interior_windows: interior_windows || false,
       gutters: gutters || false,
       fascias: fascias || false,
-      status: status !== undefined ? status : true, // Default to active
-      user_id: req.user.id, // Use authenticated user ID
+      status: status !== undefined ? status : true, 
+      user_id: req.user.id, 
     };
+
+    // Log the coordinates that we're NOT saving yet
+    console.log('⚠️ COORDINATES NOT SAVED - need to add latitude/longitude columns to database:');
+    console.log('lat:', lat, 'lng:', lng);
 
     console.log('Inserting customer data:', customerData);
 
