@@ -25,7 +25,7 @@ export interface AddCustomerModalProps {
 export default function AddJobModal({ visible, onClose, onCustomerAdded }: AddCustomerModalProps) {
   // Debug: Check if API key is loaded
   console.log('Google API Key:', process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ? 'Loaded' : 'Not loaded');
-  
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -34,6 +34,8 @@ export default function AddJobModal({ visible, onClose, onCustomerAdded }: AddCu
     address: '',
     price: '',
     frequency: '',
+    lat: 0,
+    lng: 0,
     estimated_duration: '',
     exterior_windows: true,
     interior_windows: false,
@@ -41,7 +43,7 @@ export default function AddJobModal({ visible, onClose, onCustomerAdded }: AddCu
     fascias: false,
     payment_status: true,
   });
-  
+
   const [isCreating, setIsCreating] = useState(false);
   const [customerAddress, setCustomerAddress] = useState<{ address: string; lat: number; lng: number } | null>(null);
   const [showFrequencyPicker, setShowFrequencyPicker] = useState(false);
@@ -55,6 +57,8 @@ export default function AddJobModal({ visible, onClose, onCustomerAdded }: AddCu
         description: '',
         address: '',
         price: '',
+        lat: 0,
+        lng: 0,
         frequency: '',
         estimated_duration: '',
         exterior_windows: true,
@@ -101,7 +105,7 @@ export default function AddJobModal({ visible, onClose, onCustomerAdded }: AddCu
     setIsCreating(true);
     try {
       const headers = await authService.getAuthHeaders();
-      
+
       const customerData = {
         name: formData.name.trim(),
         email: formData.email.trim() || null,
@@ -109,6 +113,8 @@ export default function AddJobModal({ visible, onClose, onCustomerAdded }: AddCu
         description: formData.description.trim(),
         address: formData.address.trim(),
         price: parseFloat(formData.price),
+        lat: formData.lat,
+        lng: formData.lng,
         frequency: formData.frequency,
         estimated_duration: parseInt(formData.estimated_duration) || null,
         payment_status: formData.payment_status,
@@ -116,8 +122,11 @@ export default function AddJobModal({ visible, onClose, onCustomerAdded }: AddCu
         interior_windows: formData.interior_windows,
         gutters: formData.gutters,
         fascias: formData.fascias,
-        status: true, // Active by default
+        status: true,
       };
+
+      console.log('🚀 CREATING CUSTOMER WITH DATA:', customerData);
+      console.log('📍 Coordinates being sent - LAT:', customerData.lat, 'LNG:', customerData.lng);
 
       const response = await fetch(buildUrl('/api/customers'), {
         method: 'POST',
@@ -125,14 +134,22 @@ export default function AddJobModal({ visible, onClose, onCustomerAdded }: AddCu
         body: JSON.stringify(customerData),
       });
 
-      console.log('Response status:', response.status);
       const result = await response.json();
-      console.log('Server response:', result);
 
       if (response.ok && result.success) {
-        Alert.alert('Success', 'Customer created successfully!');
-        onCustomerAdded(result.customer);
+        // Update the customer list first
+        onCustomerAdded(result.data);
+        
+        // Reset form
+        resetForm();
+        
+        // Close modal immediately
         onClose();
+        
+        // Show success alert after modal is closed
+        setTimeout(() => {
+          Alert.alert('Success', 'Customer created successfully!');
+        }, 100);
       } else {
         Alert.alert('Error', result.message || 'Failed to create customer');
       }
@@ -144,16 +161,38 @@ export default function AddJobModal({ visible, onClose, onCustomerAdded }: AddCu
     }
   };
 
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      email: '',
+      phone: '',
+      description: '',
+      address: '',
+      price: '',
+      frequency: '',
+      lat: 0,
+      lng: 0,
+      estimated_duration: '',
+      exterior_windows: true,
+      interior_windows: false,
+      gutters: false,
+      fascias: false,
+      payment_status: true,
+    });
+    setCustomerAddress(null);
+    setShowFrequencyPicker(false);
+  };
+
   const handleCancel = () => {
     // Check if form has any data
-    const hasFormData = formData.name.trim() || 
-                       formData.email.trim() || 
-                       formData.phone.trim() || 
-                       formData.description.trim() || 
-                       formData.address.trim() || 
-                       formData.price || 
-                       formData.frequency || 
-                       formData.estimated_duration;
+    const hasFormData = formData.name.trim() ||
+      formData.email.trim() ||
+      formData.phone.trim() ||
+      formData.description.trim() ||
+      formData.address.trim() ||
+      formData.price ||
+      formData.frequency ||
+      formData.estimated_duration;
 
     if (hasFormData) {
       Alert.alert(
@@ -186,9 +225,9 @@ export default function AddJobModal({ visible, onClose, onCustomerAdded }: AddCu
           >
             <Ionicons name="close" size={24} color="#007AFF" />
           </TouchableOpacity>
-          
+
           <Text style={styles.title}>Add New Customer</Text>
-          
+
           <View style={styles.headerButton} />
         </View>
 
@@ -237,59 +276,27 @@ export default function AddJobModal({ visible, onClose, onCustomerAdded }: AddCu
               <View style={styles.googlePlacesContainer}>
                 <GooglePlacesTextInput
                   apiKey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? ''}
-                    fetchDetails={true} 
-                                        detailsProxyUrl="http://localhost:3000/api/places-details"
+                  fetchDetails={true}
+                  detailsProxyUrl="http://localhost:3000/api/places-details"
                   onPlaceSelect={(place: any) => {
-                    console.log('🎯 SELECTED PLACE:', place);
-                    console.log('📋 FULL PLACE OBJECT:', JSON.stringify(place, null, 2));
-                    
-                    // Extract address from place object
-                    const address = place.text?.text || 
-                                  place.structuredFormat?.mainText || 
-                                  place.description || 
-                                  place.formatted_address || 
-                                  '';
-                    
-                    console.log('📍 EXTRACTED ADDRESS:', address);
-                    
-                    // Extract coordinates from the details object (from our proxy)
+                    const address = place.text?.text ||
+                      place.structuredFormat?.mainText ||
+                      place.description ||
+                      place.formatted_address ||
+                      '';
                     let lat = 0;
                     let lng = 0;
-                    
-                    console.log('🔍 COORDINATE SEARCH:');
-                    console.log('place.details:', place.details);
-                    
                     if (place.details?.location) {
-                      // New Google Places API (v1) response format
                       lat = place.details.location.latitude;
                       lng = place.details.location.longitude;
-                      console.log('✅ COORDINATES FROM details.location (Places API v1):', { lat, lng });
-                    } else if (place.details?.result?.geometry?.location) {
-                      // Old Google Places Details API response structure
-                      lat = place.details.result.geometry.location.lat;
-                      lng = place.details.result.geometry.location.lng;
-                      console.log('✅ COORDINATES FROM details.result.geometry.location:', { lat, lng });
-                    } else if (place.details?.geometry?.location) {
-                      // Alternative structure
-                      lat = place.details.geometry.location.lat;
-                      lng = place.details.geometry.location.lng;
-                      console.log('✅ COORDINATES FROM details.geometry.location:', { lat, lng });
-                    } else if (place.geometry?.location) {
-                      // Direct geometry access
-                      lat = place.geometry.location.lat;
-                      lng = place.geometry.location.lng;
-                      console.log('✅ COORDINATES FROM geometry.location:', { lat, lng });
+                      console.log('✅ COORDINATES EXTRACTED:', { lat, lng });
                     } else {
-                      console.log('❌ NO COORDINATES FOUND');
-                      console.log('🔑 Available properties:', Object.keys(place));
-                      if (place.details) {
-                        console.log('🔑 Details properties:', Object.keys(place.details));
-                      }
+                      console.log('❌ NO COORDINATES IN place.details.location');
+                      console.log('place.details:', place.details);
                     }
-                    
-                    console.log('🎯 FINAL RESULT - LAT:', lat, 'LNG:', lng);
-                    
-                    setFormData(prev => ({ ...prev, address }));
+
+                    console.log('🎯 FINAL COORDINATES - LAT:', lat, 'LNG:', lng);
+                    setFormData(prev => ({ ...prev, address, lat, lng }));
                     setCustomerAddress({
                       address,
                       lat,
@@ -329,7 +336,7 @@ export default function AddJobModal({ visible, onClose, onCustomerAdded }: AddCu
             {/* Frequency */}
             <View style={styles.fieldContainer}>
               <Text style={styles.label}>Frequency</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.pickerButton}
                 onPress={() => setShowFrequencyPicker(true)}
               >
@@ -376,7 +383,7 @@ export default function AddJobModal({ visible, onClose, onCustomerAdded }: AddCu
         {/* Frequency Picker Modal */}
         {showFrequencyPicker && (
           <View style={styles.dropdownOverlay}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.dropdownBackdrop}
               onPress={() => setShowFrequencyPicker(false)}
             />
