@@ -42,7 +42,7 @@ export default function PaymentSettingsScreen() {
   
   // Always call useStripe hook first
   const stripeRaw = useStripe();
-  
+
   // Then modify based on platform
   const stripe = Platform.OS === 'web' 
     ? { createPaymentMethod: null } 
@@ -459,16 +459,16 @@ const fetchSubscription = async () => {
               <>
                 <View style={styles.billingRow}>
                   <Text style={styles.billingLabel}>Subscription:</Text>
-                  <Text style={styles.billingValue}>{subscription.plan_name || 'N/A'}</Text>
+                  <Text style={styles.billingValue}>{subscription.subscription_type || 'N/A'}</Text>
                 </View>
                 <View style={styles.billingRow}>
                   <Text style={styles.billingLabel}>Billing Frequency</Text>
-                  <Text style={styles.billingValue}>{subscription.billing_frequency || 'N/A'}</Text>
+                  <Text style={styles.billingValue}>{subscription.billing_cycle || 'N/A'}</Text>
                 </View>
                 <View style={styles.billingRow}>
                   <Text style={styles.billingLabel}>Amount</Text>
                   <Text style={styles.billingValue}>
-                    {subscription.amount ? `$${subscription.amount.toFixed(2)}/${subscription.billing_frequency?.toLowerCase() || 'period'}` : 'N/A'}
+                    {'£' + subscription.subscription_price || 'N/A'}
                   </Text>
                 </View>
                 <View style={styles.billingRow}>
