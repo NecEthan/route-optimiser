@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { StyleSheet, Text, View, SafeAreaView, Alert, ScrollView, TouchableOpacity } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
-import JobList from "@/components/ui/job-list";
+import DailySchedule from "@/components/ui/daily-schedule";
 import JobDetailsModal from "@/components/ui/job-details-modal";
 import AddScheduleModal from "@/components/ui/add-schedule-modal";
 import Button from "@/components/ui/button";
 import { Customer } from "@/lib/customer-service";
+import { default as scheduleService, DaySchedule, ScheduleCustomer } from "@/services/scheduleService";
 
 interface DayOption {
   date: string; // YYYY-MM-DD format
@@ -16,10 +17,11 @@ interface DayOption {
 }
 
 export default function TodayScreen() {
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<ScheduleCustomer | null>(null);
   const [showCustomerDetails, setShowCustomerDetails] = useState(false);
   const [showAddScheduleModal, setShowAddScheduleModal] = useState(false);
-  const [jobListKey, setJobListKey] = useState(0); // Force re-render of job list
+  const [scheduleData, setScheduleData] = useState<DaySchedule | null>(null);
+  const [loading, setLoading] = useState(false);
   const [cashPaymentStates, setCashPaymentStates] = useState<{[key: string]: boolean}>({}); // Track cash payment status for each customer
   
   // Generate days for the next 7 days starting from today
@@ -65,8 +67,27 @@ export default function TodayScreen() {
 
   const handleDaySelect = (date: string) => {
     setSelectedDay(date);
-    setJobListKey(prev => prev + 1); // Refresh job list when day changes
+    fetchScheduleForDate(date); // Fetch schedule for selected date
   };
+
+  const fetchScheduleForDate = async (date: string) => {
+    setLoading(true);
+    try {
+      const schedule = await scheduleService.getScheduleForDate(date);
+      console.log(schedule, 'SHHHHHHHHH')
+      setScheduleData(schedule);
+    } catch (error) {
+      console.error('Error fetching schedule for date:', error);
+      Alert.alert('Error', 'Failed to load schedule data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch schedule data when component mounts and when day changes
+  useEffect(() => {
+    fetchScheduleForDate(selectedDay);
+  }, [selectedDay]);
 
   const handleNextDay = () => {
     const currentIndex = dayOptions.findIndex(day => day.date === selectedDay);
@@ -92,20 +113,13 @@ export default function TodayScreen() {
     setShowAddScheduleModal(false);
   };
 
-  const handleCustomerPress = (customer: Customer) => {
+  const handleCustomerPress = (customer: ScheduleCustomer) => {
     console.log('🎯 Customer pressed in today screen:', customer.name);
     setSelectedCustomer(customer);
     setShowCustomerDetails(true);
   };
 
-  const handleCashPaymentChange = (customerId: string, isPaidInCash: boolean) => {
-    // Update cash payment state when checkbox is clicked
-    setCashPaymentStates(prev => ({
-      ...prev,
-      [customerId]: isPaidInCash
-    }));
-    console.log(`💰 Cash payment status updated for customer ${customerId}: ${isPaidInCash}`);
-  };
+
 
   const handleEditCustomer = (customer: Customer) => {
     console.log('✏️ Edit customer requested:', customer.name);
@@ -117,12 +131,47 @@ export default function TodayScreen() {
   };
 
   const handleCustomerUpdated = (updatedCustomer: Customer) => {
-    setSelectedCustomer(updatedCustomer);
+    // Convert Customer to ScheduleCustomer for state update
+    const scheduleCustomer: ScheduleCustomer = {
+      id: updatedCustomer.id,
+      name: updatedCustomer.name,
+      address: updatedCustomer.address,
+      price: updatedCustomer.price,
+      estimated_duration: updatedCustomer.estimated_duration || 60,
+      lat: 0, // Will be refreshed from schedule data
+      lng: 0,
+      days_since_cleaned: 0,
+      days_overdue: 0,
+      urgency_score: 0,
+      next_due_date: '',
+      route_order: 0
+    };
+    setSelectedCustomer(scheduleCustomer);
+    // Refresh schedule data when customer is updated
+    fetchScheduleForDate(selectedDay);
+  };
+
+  // Convert ScheduleCustomer to Customer for JobDetailsModal
+  const convertToCustomer = (scheduleCustomer: ScheduleCustomer): Customer => {
+    return {
+      id: scheduleCustomer.id,
+      name: scheduleCustomer.name,
+      address: scheduleCustomer.address,
+      price: scheduleCustomer.price,
+      estimated_duration: scheduleCustomer.estimated_duration,
+      description: `Window cleaning service - ${scheduleCustomer.estimated_duration} minutes`, // Add description as required
+      user_id: '947af734-4e40-44f7-8d8e-d0f304dee2dd',
+      email: '',
+      phone: '',
+      payment_method: 'cash',
+      payment_status: false,
+      paid_in_cash: false
+    };
   };
 
   const handleCustomerCompleted = (customerId: string) => {
     console.log(`✅ Customer ${customerId} completed and removed from today's list`);
-    console.log('🔄 Forcing JobList refresh...');
+    console.log('🔄 Refreshing schedule data...');
     
     // Remove from cash payment states as well
     setCashPaymentStates(prev => {
@@ -131,18 +180,23 @@ export default function TodayScreen() {
       return updated;
     });
     
-    // Force refresh the JobList to show updated data
-    setJobListKey(prev => prev + 1);
+    // Refresh schedule data to show updated information
+    fetchScheduleForDate(selectedDay);
   };
 
   const handleCloseCustomerDetails = () => {
     setShowCustomerDetails(false);
     setSelectedCustomer(null);
     
-    // Always refresh the customer list when modal closes
-    // This ensures any completed customers are filtered out
-    console.log('🔄 Modal closed - refreshing customer list...');
-    setJobListKey(prev => prev + 1); // Force JobList to re-render and fetch fresh data
+    // Refresh the schedule data when modal closes
+    console.log('🔄 Modal closed - refreshing schedule data...');
+    fetchScheduleForDate(selectedDay);
+  };
+
+  const handleRefreshSchedule = async () => {
+    // Clear cache and fetch fresh data
+    scheduleService.clearCache();
+    await fetchScheduleForDate(selectedDay);
   };
 
   return (
@@ -205,6 +259,12 @@ export default function TodayScreen() {
         
         <View style={styles.buttonContainer}>
           <Button 
+            title="Refresh" 
+            onPress={handleRefreshSchedule}
+            variant="outline"
+            size="medium"
+          />
+          <Button 
             title="Add Schedule" 
             onPress={handleAddSchedule}
             variant="outline"
@@ -225,12 +285,10 @@ export default function TodayScreen() {
           </Text>
         </View>
         
-        <JobList 
-          key={jobListKey} // Force re-render when key changes
-          onJobPress={handleCustomerPress}
-          onCashPaymentChange={handleCashPaymentChange}
-          onCustomerCompleted={handleCustomerCompleted}
-          selectedDate={selectedDay}
+        <DailySchedule 
+          schedule={scheduleData}
+          onCustomerPress={handleCustomerPress}
+          loading={loading}
         />
         
         
@@ -239,9 +297,9 @@ export default function TodayScreen() {
       {/* Customer Details Modal */}
       <JobDetailsModal
         visible={showCustomerDetails}
-        job={selectedCustomer}
+        job={selectedCustomer ? convertToCustomer(selectedCustomer) : null}
         onClose={handleCloseCustomerDetails}
-        onEdit={handleEditCustomer}
+        onEdit={(customer) => handleEditCustomer(convertToCustomer(selectedCustomer!))}
         onJobUpdated={handleCustomerUpdated}
         onCustomerCompleted={handleCustomerCompleted}
         cashPaymentStatus={selectedCustomer ? cashPaymentStates[selectedCustomer.id] || false : false}
