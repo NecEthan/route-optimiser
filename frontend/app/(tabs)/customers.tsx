@@ -1,10 +1,12 @@
 import React, { useState, useRef } from "react";
-import { SafeAreaView, View, StyleSheet, Text, ScrollView } from "react-native";
+import { SafeAreaView, View, StyleSheet, Text, ScrollView, Alert } from "react-native";
 import Button from "@/components/ui/button";
 import CustomerList from "@/components/ui/customer-list";
 import AddJobModal from "@/components/ui/add-job-modal";
 import CustomerDetailsModal from "@/components/ui/customer-details-modal";
 import EditCustomerModal from "@/components/ui/edit-customer-modal";
+import windowCleanerService from "../../services/windowCleaner";
+
 
 export default function CustomersScreen() {
   const [showAddModal, setShowAddModal] = useState(false);
@@ -21,6 +23,46 @@ export default function CustomersScreen() {
       setRefreshTrigger(prev => prev + 1);
     }
   };
+
+  const handleOptimise = async () => {
+    try {
+      Alert.alert('Optimizer', 'Generating 1-week optimized schedule...', [{ text: 'OK' }]);
+      
+      // Define the work schedule - you can make this configurable
+      const workSchedule = {
+        monday_hours: 8,
+        tuesday_hours: 8,
+        wednesday_hours: 8,
+        thursday_hours: 8,
+        friday_hours: 8,
+        saturday_hours: 4,
+        sunday_hours: null
+      };
+      
+      // Optional: cleaner starting location (London coordinates as default)
+      const cleanerLocation = {
+        lat: 51.5074,
+        lng: -0.1278
+      };
+      
+      const result = await windowCleanerService.generate1WeekSchedule(
+        "947af734-4e40-44f7-8d8e-d0f304dee2dd",
+        workSchedule,
+        cleanerLocation
+      );
+      
+      if (result.success) {
+        console.log('Schedule generated:', result.data);
+        Alert.alert('Success', 'Schedule optimized successfully!', [{ text: 'OK' }]);
+      } else {
+        console.error('Schedule error:', result.error);
+        Alert.alert('Error', result.error || 'Failed to optimize schedule', [{ text: 'OK' }]);
+      }
+    } catch (error: any) {
+      console.error("Error during optimisation:", error);
+      Alert.alert("Optimise Error", error.message || "An error occurred while optimising.");
+    }
+  } 
 
   const handleAddCustomer = () => {
     setShowAddModal(true);
@@ -80,6 +122,12 @@ export default function CustomersScreen() {
              <Button 
                title="Add Customer" 
                onPress={handleAddCustomer}
+               variant="primary"
+               size="medium"
+             />
+             <Button 
+               title="Optimise" 
+               onPress={handleOptimise}
                variant="primary"
                size="medium"
              />
