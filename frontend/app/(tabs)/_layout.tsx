@@ -1,4 +1,4 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { View } from 'react-native';
 
@@ -33,7 +33,7 @@ export default function TabLayout() {
           title: 'Today',
           tabBarIcon: ({ color }) => (
             <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-              <FontAwesome size={24} name="calendar" color={color} />
+              <Ionicons size={24} name="calendar-outline" color={color} />
             </View>
           ),
         }}
@@ -44,7 +44,7 @@ export default function TabLayout() {
           title: 'Customers',
           tabBarIcon: ({ color }) => (
             <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-              <FontAwesome size={24} name="users" color={color} />
+              <Ionicons size={24} name="people-outline" color={color} />
             </View>
           ),
         }}
@@ -55,7 +55,7 @@ export default function TabLayout() {
           title: 'Accounting',
           tabBarIcon: ({ color }) => (
             <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-              <FontAwesome size={24} name="dollar" color={color} />
+              <Ionicons size={24} name="card-outline" color={color} />
             </View>
           ),
         }}
@@ -66,7 +66,7 @@ export default function TabLayout() {
           title: 'Settings',
           tabBarIcon: ({ color }) => (
             <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-              <FontAwesome size={24} name="cog" color={color} />
+              <Ionicons size={24} name="settings-outline" color={color} />
             </View>
           ),
         }}
