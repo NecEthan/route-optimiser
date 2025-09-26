@@ -202,7 +202,7 @@ const fetchSubscription = async () => {
 
         // Send validated token to backend
         const result = await settingsService.addPaymentMethodWithToken({
-          paymentMethodId: paymentMethod.id, // Real validated Stripe token
+          paymentMethodId: paymentMethod.id, 
           cardholderName: newCard.cardholderName,
           replaceCardId: cardToReplace,
         });
@@ -258,41 +258,6 @@ const fetchSubscription = async () => {
         // Simulate API call for demo purposes
         await new Promise(resolve => setTimeout(resolve, 2000));
 
-        // Create mock payment method object for demo
-        const mockPaymentMethod = {
-          id: `pm_new_${Date.now()}`,
-          user_id: 'current-user-id',
-          stripe_customer_id: 'cus_demo_customer',
-          stripe_payment_method_id: `pm_demo_${Date.now()}`,
-          last_four: cardNumberClean.slice(-4),
-          card_type: getCardTypeFromNumber(cardNumberClean),
-          expiration_month: parseInt(newCard.expiryMonth),
-          expiration_year: parseInt(newCard.expiryYear),
-          bank_name: null,
-          cardholder_name: newCard.cardholderName,
-          is_default: paymentMethods.length === 0,
-          status: 'active',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-
-        if (cardToReplace) {
-          // Replace existing card with mock data
-          setPaymentMethods(prev => 
-            prev.map(method => 
-              method.id === cardToReplace 
-                ? { ...mockPaymentMethod, is_default: method.is_default }
-                : method
-            )
-          );
-          Alert.alert('Success', 'Payment method replaced successfully! (Demo Mode)');
-        } else {
-          // Add new card with mock data
-          setPaymentMethods(prev => [...prev, mockPaymentMethod]);
-          Alert.alert('Success', 'Payment method added successfully! (Demo Mode)');
-        }
-
-        // Reset form and close modal
         setNewCard({
           cardholderName: '',
           cardComplete: false,
@@ -332,6 +297,27 @@ const fetchSubscription = async () => {
     Alert.alert('Download Invoice', `This would download invoice ${invoiceNumber}`);
   };
 
+  const handleCreateTestData = async () => {
+    try {
+      setLoading(true);
+      const result = await settingsService.createTestData();
+      
+      if (result.success) {
+        Alert.alert('Success', 'Test data created! Refreshing page...');
+        // Refresh the data
+        await fetchPaymentMethod();
+        await fetchSubscription();
+      } else {
+        Alert.alert('Error', result.message || 'Failed to create test data');
+      }
+    } catch (error) {
+      console.error('Error creating test data:', error);
+      Alert.alert('Error', 'Failed to create test data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -357,7 +343,9 @@ const fetchSubscription = async () => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Payment Methods Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Payment Methods</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Payment Methods</Text>
+          </View>
           
           {paymentMethods.map((method) => (
             <View key={method.id} style={styles.paymentMethodCard}>
@@ -401,44 +389,58 @@ const fetchSubscription = async () => {
             {subscription ? (
               <>
                 <View style={styles.billingRow}>
-                  <Text style={styles.billingLabel}>Subscription:</Text>
-                  <Text style={styles.billingValue}>{subscription.subscription_type || 'N/A'}</Text>
+                  <Text style={styles.billingLabel}>Plan:</Text>
+                  <Text style={styles.billingValue}>{subscription.subscription_type || 'Basic Plan'}</Text>
                 </View>
                 <View style={styles.billingRow}>
-                  <Text style={styles.billingLabel}>Billing Frequency</Text>
-                  <Text style={styles.billingValue}>{subscription.billing_cycle || 'N/A'}</Text>
-                </View>
-                <View style={styles.billingRow}>
-                  <Text style={styles.billingLabel}>Amount</Text>
+                  <Text style={styles.billingLabel}>Billing Cycle:</Text>
                   <Text style={styles.billingValue}>
-                    {'£' + subscription.subscription_price || 'N/A'}
+                    {subscription.billing_cycle === 'monthly' ? 'Monthly' : 
+                     subscription.billing_cycle === 'yearly' ? 'Yearly' : 
+                     subscription.billing_cycle || 'Monthly'}
                   </Text>
                 </View>
                 <View style={styles.billingRow}>
-                  <Text style={styles.billingLabel}>Next Billing Date</Text>
+                  <Text style={styles.billingLabel}>Amount:</Text>
+                  <Text style={[styles.billingValue, { fontWeight: '700', fontSize: 16 }]}>
+                    {subscription.formatted_price || `£${parseFloat(subscription.subscription_price || 0).toFixed(2)}`}
+                    <Text style={{ fontSize: 12, color: '#666', fontWeight: '400' }}>
+                      /{subscription.billing_cycle === 'yearly' ? 'year' : 'month'}
+                    </Text>
+                  </Text>
+                </View>
+                <View style={styles.billingRow}>
+                  <Text style={styles.billingLabel}>Next Billing:</Text>
                   <Text style={styles.billingValue}>
                     {subscription.next_billing_date 
                       ? formatDate(subscription.next_billing_date) 
-                      : 'N/A'
+                      : 'Calculating...'
                     }
                   </Text>
                 </View>
                 <View style={styles.billingRow}>
                   <Text style={styles.billingLabel}>Status:</Text>
-                  <Text style={[styles.billingValue, { color: subscription.status === 'active' ? '#28a745' : '#dc3545' }]}>
-                    {subscription.status ? subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1) : 'N/A'}
-                  </Text>
+                  <View style={[
+                    styles.statusBadge, 
+                    { backgroundColor: subscription.status === 'active' ? '#28a745' : '#dc3545' }
+                  ]}>
+                    <Text style={[styles.statusText, { color: 'white' }]}>
+                      {subscription.status ? subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1) : 'Unknown'}
+                    </Text>
+                  </View>
                 </View>
               </>
-            ) : paymentMethods.length > 0 ? (
-              <View style={styles.billingRow}>
-                <Text style={styles.billingLabel}>Loading subscription...</Text>
-                <Text style={styles.billingValue}>-</Text>
+            ) : loading ? (
+              <View style={styles.emptyStateCard}>
+                <Text style={styles.billingLabel}>Loading subscription details...</Text>
               </View>
             ) : (
-              <View style={styles.billingRow}>
-                <Text style={styles.billingLabel}>No active subscription</Text>
-                <Text style={styles.billingValue}>-</Text>
+              <View style={styles.emptyStateCard}>
+                <Ionicons name="receipt-outline" size={48} color="#ccc" />
+                <Text style={styles.emptyStateTitle}>No Active Subscription</Text>
+                <Text style={styles.emptyStateSubtitle}>
+                  Subscribe to a plan to access premium features
+                </Text>
               </View>
             )}
           </View>
@@ -459,6 +461,25 @@ const fetchSubscription = async () => {
             </View>
           </View>
         </View>
+
+        {/* Development/Test Section - Remove in production */}
+        {__DEV__ && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Development Tools</Text>
+            <View style={styles.testSection}>
+              <Text style={styles.testSectionSubtitle}>
+                Create sample subscription and payment method data for testing
+              </Text>
+              <Button
+                title={loading ? "Creating..." : "Create Test Data"}
+                onPress={handleCreateTestData}
+                variant="secondary"
+                disabled={loading}
+                style={{ marginTop: 12 }}
+              />
+            </View>
+          </View>
+        )}
       </ScrollView>
 
       {/* Add Payment Method Modal */}
@@ -1068,5 +1089,45 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 14,
     marginBottom: 10,
+  },
+  
+
+  // Empty state styles (for billing info only)
+  emptyStateCard: {
+    alignItems: 'center',
+    padding: 40,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderStyle: 'dashed',
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  
+  // Test section styles
+  testSection: {
+    padding: 16,
+    backgroundColor: '#f0f8ff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#b8daff',
+  },
+  testSectionSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 8,
   },
 });
