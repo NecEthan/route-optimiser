@@ -6,53 +6,94 @@ import { WindowCleanerOptimizationService } from '../ExpressIntegrationService';
 const router = express.Router();
 
 /**
- * 🎯 GENERATE & SAVE OPTIMIZED SCHEDULE
- * POST /api/schedule/optimize/:userId
+ * 🎯 SMART ONE-BUTTON OPTIMIZATION 
+ * POST /api/schedule/smart-optimize/:userId
  * 
- * Sends work schedule to FastAPI → Gets optimized schedule → Saves to DB
+ * Intelligent optimization that handles both first-time and returning users:
+ * - First-time: Optimizes all days for the week
+ * - Returning: Protects today/tomorrow, optimizes remaining days
  */
-router.post('/optimize/:userId', async (req, res) => {
+router.post('/smart-optimize/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    const { workSchedule, cleanerLocation } = req.body;
+    
+    // Default work schedule (can be customized later)
+    const defaultWorkSchedule = {
+      monday_hours: 8,
+      tuesday_hours: 8,
+      wednesday_hours: 8,
+      thursday_hours: 8,
+      friday_hours: 8,
+      saturday_hours: 4,
+      sunday_hours: null
+    };
+    
+    // Use provided work schedule or default
+    const workSchedule = req.body.workSchedule || defaultWorkSchedule;
+    const cleanerLocation = req.body.cleanerLocation || { lat: 51.5074, lng: -0.1278 };
 
-    // Validate input
-    if (!workSchedule) {
-      return res.status(400).json({
-        success: false,
-        error: 'Work schedule is required'
-      });
-    }
+    console.log(`🎯 Starting smart optimization for user: ${userId}`);
 
     const optimizationService = new WindowCleanerOptimizationService();
 
-    // Generate optimized schedule via FastAPI (this saves to DB automatically)
-    const optimizedSchedule = await optimizationService.generateOptimizedScheduleFromDatabase(
+    // Call the new smart optimization endpoint
+    const smartOptimizeResult = await optimizationService.smartOptimizeSchedule(
       userId,
       workSchedule,
       cleanerLocation
     );
 
+    // Generate appropriate response message based on optimization type
+    let responseMessage;
+    let optimizationType;
+    
+    if (smartOptimizeResult.isFirstTime) {
+      optimizationType = 'first-time';
+      responseMessage = `🎉 Welcome! Created your first optimized schedule with ${smartOptimizeResult.summary.total_customers_scheduled} customers across ${smartOptimizeResult.summary.working_days} days. Revenue potential: £${smartOptimizeResult.summary.total_revenue.toFixed(2)}`;
+    } else {
+      optimizationType = 'returning-user';
+      const protectedDaysText = smartOptimizeResult.protectedDates && smartOptimizeResult.protectedDates.length > 0 
+        ? ` (protected: ${smartOptimizeResult.protectedDates.join(', ')})`
+        : '';
+      responseMessage = `🔄 Schedule updated intelligently${protectedDaysText}. Optimized ${smartOptimizeResult.summary.total_customers_scheduled} customers with £${smartOptimizeResult.summary.total_revenue.toFixed(2)} revenue potential.`;
+    }
+
     // Extract key metrics
-    const metrics = optimizationService.extractKeyMetrics(optimizedSchedule);
-    const todaysSchedule = optimizationService.getTodaysSchedule(optimizedSchedule);
+    const metrics = optimizationService.extractKeyMetrics(smartOptimizeResult);
+    const todaysSchedule = optimizationService.getTodaysSchedule(smartOptimizeResult);
 
     res.json({
       success: true,
-      message: 'Schedule optimized and saved successfully',
+      message: responseMessage,
+      optimizationType,
+      isFirstTime: smartOptimizeResult.isFirstTime,
+      protectedDates: smartOptimizeResult.protectedDates || [],
       data: {
-        fullSchedule: optimizedSchedule.schedule,
+        fullSchedule: smartOptimizeResult.schedule,
         todaysSchedule,
         metrics,
-        savedToDatabase: true
+        summary: smartOptimizeResult.summary,
+        timeSavings: smartOptimizeResult.time_savings_summary,
+        unscheduledCustomers: smartOptimizeResult.unscheduled_customers,
+        customersFromDatabase: smartOptimizeResult.customers_from_database
       }
     });
 
-  } catch (error: any) {
-    console.error('Schedule optimization failed:', error);
+  } catch (error) {
+    console.error('Smart optimization failed:', error);
+    
+    // Provide helpful error messages
+    let errorMessage = error.message;
+    if (error.message.includes('No customers found')) {
+      errorMessage = 'No customers found in your account. Please add some customers first before optimizing.';
+    } else if (error.message.includes('Network error')) {
+      errorMessage = 'Unable to connect to optimization service. Please try again in a moment.';
+    }
+    
     res.status(500).json({
       success: false,
-      error: error.message
+      error: errorMessage,
+      optimizationType: 'failed'
     });
   }
 });
@@ -118,7 +159,7 @@ router.get('/today/:userId', async (req, res) => {
       status: route.status
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching today\'s schedule:', error);
     res.status(500).json({
       success: false,
@@ -213,7 +254,7 @@ router.get('/week/:userId', async (req, res) => {
       }))
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching week schedule:', error);
     res.status(500).json({
       success: false,
@@ -295,7 +336,7 @@ router.get('/date/:userId/:date', async (req, res) => {
       lastGenerated: day.created_at
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching date schedule:', error);
     res.status(500).json({
       success: false,
@@ -347,7 +388,7 @@ router.put('/customer/:routeId/:customerId/status', async (req, res) => {
       customer: updateResult.rows[0]
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error updating customer status:', error);
     res.status(500).json({
       success: false,

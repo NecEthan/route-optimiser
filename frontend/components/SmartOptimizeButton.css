@@ -1,0 +1,139 @@
+/**
+ * 🧠 Smart Optimization Component Styles
+ * 
+ * CSS styles for the SmartOptimizeButton component
+ * Add these to your global CSS file or import this file
+ */
+
+/* Spinner animation for loading state */
+.spinner {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { 
+    transform: rotate(0deg); 
+  }
+  100% { 
+    transform: rotate(360deg); 
+  }
+}
+
+/* Smart optimize button hover effects */
+.smart-optimize-btn:hover:not(:disabled) {
+  background-color: #0056b3 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.smart-optimize-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2);
+}
+
+/* Result message slide-in animation */
+.result-message {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loading message pulse animation */
+.loading-message {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Metric cards hover effect */
+.metric-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Success message styling */
+.result-message.success {
+  border-left: 4px solid #28a745;
+}
+
+/* Error message styling */
+.result-message.error {
+  border-left: 4px solid #dc3545;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+  .smart-optimize-btn {
+    width: 100%;
+    padding: 14px 20px !important;
+    font-size: 18px !important;
+  }
+  
+  .metrics-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .result-message {
+    margin-left: -8px;
+    margin-right: -8px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .optimization-results {
+    background-color: #2d3748 !important;
+    border-color: #4a5568 !important;
+    color: #e2e8f0 !important;
+  }
+  
+  .metric-card {
+    background-color: #4a5568 !important;
+    color: #e2e8f0 !important;
+  }
+  
+  .result-message.success {
+    background-color: #2d5a3d !important;
+    border-color: #4a7c59 !important;
+    color: #9ae6b4 !important;
+  }
+  
+  .result-message.error {
+    background-color: #5a2d2d !important;
+    border-color: #7c4a4a !important;
+    color: #feb2b2 !important;
+  }
+}
+
+/* Accessibility improvements */
+.smart-optimize-btn:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+.result-message button:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}

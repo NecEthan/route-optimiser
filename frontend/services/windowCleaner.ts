@@ -9,7 +9,7 @@
 import axios, { AxiosResponse } from 'axios';
 
 // TypeScript interfaces for type safety
-interface WorkSchedule {
+export interface WorkSchedule {
   monday_hours?: number | null;
   tuesday_hours?: number | null;
   wednesday_hours?: number | null;
@@ -19,7 +19,7 @@ interface WorkSchedule {
   sunday_hours?: number | null;
 }
 
-interface CleanerLocation {
+export interface CleanerLocation {
   lat: number;
   lng: number;
 }
@@ -269,50 +269,74 @@ export class WindowCleanerOptimizationService {
     return scheduleResponse.schedule[today] || null;
   }
 
+
+
   /**
-   * 🎯 Usage Example for Express Route Handler
+   * 🧠 SMART OPTIMIZATION
+   * 
+   * Intelligent one-button optimization that automatically handles:
+   * - First-time users: Optimizes all days 
+   * - Returning users: Protects today/tomorrow, optimizes rest
    */
-  static createExampleExpressRoute() {
-    return 
-    app.post('/api/optimize-schedule/:userId', async (req, res) => {
-      try {
-        const { userId } = req.params;
-        const { workSchedule, cleanerLocation } = req.body;
-        
-        const optimizationService = new WindowCleanerOptimizationService();
-        
-        // Send work schedule to FastAPI, get optimized customer schedule back
-        const optimizedSchedule = await optimizationService.generateOptimizedScheduleFromDatabase(
-          userId,
-          workSchedule,
-          cleanerLocation
-        );
-        
-        // Extract key metrics for your frontend
-        const metrics = optimizationService.extractKeyMetrics(optimizedSchedule);
-        
-        // Get today's schedule specifically
-        const todaysSchedule = optimizationService.getTodaysSchedule(optimizedSchedule);
-        
-        res.json({
-          success: true,
-          data: {
-            fullSchedule: optimizedSchedule.schedule,
-            todaysSchedule,
-            metrics,
-            message: 'Schedule optimized successfully'
-          }
-        });
-        
-      } catch (error) {
-        console.error('Optimization failed:', error);
-        res.status(500).json({
-          success: false,
-          error: error.message
-        });
+  async smartOptimizeSchedule(
+    userId: string,
+    workSchedule: WorkSchedule,
+    cleanerLocation?: CleanerLocation
+  ): Promise<OptimizedScheduleResponse & { isFirstTime: boolean; protectedDates?: string[] }> {
+    try {
+      const requestData: ExpressScheduleRequest = {
+        work_schedule: workSchedule,
+        cleaner_start_location: cleanerLocation || { lat: 51.5074, lng: -0.1278 }
+      };
+
+      console.log(`🧠 Starting smart optimization for user: ${userId}`);
+      console.log(`📊 Work Schedule:`, workSchedule);
+      
+      const response: AxiosResponse<OptimizedScheduleResponse & { isFirstTime: boolean; protectedDates?: string[] }> = await axios.post(
+        `${this.baseUrl}/smart-optimize/${userId}`,
+        requestData,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          timeout: this.timeout,
+        }
+      );
+
+      const result = response.data;
+      
+      if (result.isFirstTime) {
+        console.log(`🎉 First-time optimization completed!`);
+        console.log(`📈 ${result.summary.total_customers_scheduled} customers scheduled across ${result.summary.working_days} days`);
+      } else {
+        console.log(`🔄 Smart re-optimization completed!`);
+        console.log(`🛡️  Protected dates: ${result.protectedDates?.join(', ') || 'none'}`);
+        console.log(`📈 ${result.summary.total_customers_scheduled} customers optimized`);
       }
-    });
-    ;
+      
+      console.log(`💰 Total revenue: £${result.summary.total_revenue}`);
+      
+      return result;
+
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        const message = error.response?.data?.detail || error.message;
+        
+        console.error(`❌ Smart Optimization Error (${status}):`, message);
+        
+        if (status === 404) {
+          throw new Error(`No customers found for user ${userId}. Please ensure you have customers before optimizing.`);
+        } else if (status === 500) {
+          throw new Error(`Smart optimization error: ${message}`);
+        } else {
+          throw new Error(`Smart optimization failed: ${message}`);
+        }
+      } else {
+        console.error('❌ Network Error:', error);
+        throw new Error(`Network error: Unable to connect to optimization service at ${this.baseUrl}`);
+      }
+    }
   }
 }
 
