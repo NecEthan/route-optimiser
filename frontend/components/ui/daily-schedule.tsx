@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DaySchedule, ScheduleCustomer } from '@/services/scheduleService';
+import OpenMapsButton from './open-google-maps';
 
 interface DailyScheduleProps {
   schedule: DaySchedule | null;
@@ -156,6 +157,9 @@ const DailySchedule: React.FC<DailyScheduleProps> = ({ schedule, onCustomerPress
                   <Text style={styles.customerDuration}>{formatDuration(customer.estimated_duration)}</Text>
                 </View>
               </View>
+
+              <OpenMapsButton latitude={51.5074} longitude={-0.1278} />
+
               
               {/* Urgency Indicator */}
               {customer.days_overdue > 0 && (
