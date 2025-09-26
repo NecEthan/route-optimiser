@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Alert, ScrollView, SafeAreaView, TouchableOpaci
 import { useRouter } from 'expo-router';
 import Button from "@/components/ui/button";
 import { Ionicons } from '@expo/vector-icons';
-import { settingsService } from '@/lib';
+import { authService, settingsService } from '@/lib';
 
 // Import Stripe components using platform-specific resolution
 import { CardField, useStripe } from '@/lib/stripe-native';
@@ -58,7 +58,8 @@ useEffect(() => {
 
 const fetchPaymentMethod = async () => {
     try {
-      const response = await settingsService.getUserPaymentMethod();
+      const user = await authService.getUser();
+      const response = await settingsService.getUserPaymentMethod(user.id);
       console.log('User payment method data:', response);
       
       if (response.success && response.data) {
