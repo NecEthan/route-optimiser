@@ -123,11 +123,11 @@ export class WindowCleanerOptimizationService {
         cleaner_start_location: cleanerLocation || { lat: 51.5074, lng: -0.1278 } // Default London
       };
 
-      console.log(`🚀 Sending work schedule to FastAPI for user: ${userId}`);
+      console.log(`🚀 Sending work schedule to Express API for user: ${userId}`);
       console.log(`📊 Work Schedule:`, workSchedule);
       
       const response: AxiosResponse<OptimizedScheduleResponse> = await axios.post(
-        `${this.baseUrl}/create-schedule-from-express/${userId}`,
+        `${this.baseUrl}/schedule/smart-optimize/${userId}`,
         requestData,
         {
           headers: {
@@ -186,7 +186,7 @@ export class WindowCleanerOptimizationService {
       console.log(`📊 Work Schedule:`, workSchedule);
       
       const response: AxiosResponse<OptimizedScheduleResponse> = await axios.post(
-        `${this.baseUrl}/create-schedule-from-express/${userId}`,
+        `${this.baseUrl}/schedule/smart-optimize/${userId}`,
         requestData,
         {
           headers: {
@@ -292,8 +292,8 @@ export class WindowCleanerOptimizationService {
       console.log(`🧠 Starting smart optimization for user: ${userId}`);
       console.log(`📊 Work Schedule:`, workSchedule);
       
-      const response: AxiosResponse<OptimizedScheduleResponse & { isFirstTime: boolean; protectedDates?: string[] }> = await axios.post(
-        `${this.baseUrl}/smart-optimize/${userId}`,
+      const response: AxiosResponse<{ success: boolean; data: OptimizedScheduleResponse & { isFirstTime: boolean; protectedDates?: string[] } }> = await axios.post(
+        `${this.baseUrl}/schedule/smart-optimize/${userId}`,
         requestData,
         {
           headers: {
@@ -303,7 +303,22 @@ export class WindowCleanerOptimizationService {
         }
       );
 
-      const result = response.data;
+      const serverResponse = response.data;
+      
+      if (!serverResponse.success || !serverResponse.data) {
+        throw new Error('Invalid response from server');
+      }
+      
+      // Map the server response to the expected format
+      const responseData = serverResponse.data as any;
+      const result = {
+        ...responseData,
+        schedule: responseData.fullSchedule,
+        summary: responseData.summary,
+        time_savings_summary: responseData.timeSavings,
+        unscheduled_customers: responseData.unscheduledCustomers,
+        customers_from_database: responseData.customersFromDatabase
+      };
       
       if (result.isFirstTime) {
         console.log(`🎉 First-time optimization completed!`);
@@ -341,4 +356,5 @@ export class WindowCleanerOptimizationService {
 }
 
 // Export a default instance
-export default new WindowCleanerOptimizationService();
+// Use IP address for mobile compatibility instead of localhost
+export default new WindowCleanerOptimizationService('http://192.168.1.120:3000/api');

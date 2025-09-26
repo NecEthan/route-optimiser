@@ -1,9 +1,81 @@
-// routes/schedule.ts or in your main Express file
+// routes/schedule.js
 
-import express from 'express';
-import { WindowCleanerOptimizationService } from '../ExpressIntegrationService';
-
+const express = require('express');
 const router = express.Router();
+
+// Mock WindowCleanerOptimizationService for testing
+class WindowCleanerOptimizationService {
+  async smartOptimizeSchedule(userId, workSchedule, cleanerLocation) {
+    // Return mock data structure that matches what the frontend expects
+    return {
+      isFirstTime: true,
+      schedule: [
+        {
+          date: '2025-09-26',
+          day_name: 'Thursday',
+          customers: [
+            {
+              customer_id: 'mock-1',
+              customer_name: 'John Smith',
+              customer_address: '123 Main St, London',
+              visit_order: 1,
+              estimated_duration: 30,
+              price: 25.00,
+              status: 'scheduled'
+            },
+            {
+              customer_id: 'mock-2',
+              customer_name: 'Sarah Johnson',
+              customer_address: '456 Oak Ave, London',
+              visit_order: 2,
+              estimated_duration: 45,
+              price: 35.00,
+              status: 'scheduled'
+            }
+          ]
+        },
+        {
+          date: '2025-09-27',
+          day_name: 'Friday',
+          customers: [
+            {
+              customer_id: 'mock-3',
+              customer_name: 'Mike Wilson',
+              customer_address: '789 Pine St, London',
+              visit_order: 1,
+              estimated_duration: 30,
+              price: 28.00,
+              status: 'scheduled'
+            }
+          ]
+        }
+      ],
+      summary: {
+        total_customers_scheduled: 3,
+        working_days: 2,
+        total_revenue: 88.00
+      },
+      time_savings_summary: {
+        total_time_saved_minutes: 0
+      },
+      unscheduled_customers: [],
+      customers_from_database: []
+    };
+  }
+
+  extractKeyMetrics(result) {
+    return {
+      totalRevenue: result.summary.total_revenue,
+      totalCustomers: result.summary.total_customers_scheduled,
+      workingDays: result.summary.working_days
+    };
+  }
+
+  getTodaysSchedule(result) {
+    const today = new Date().toISOString().split('T')[0];
+    return result.schedule.find(day => day.date === today) || null;
+  }
+}
 
 /**
  * 🎯 SMART ONE-BUTTON OPTIMIZATION 
@@ -397,4 +469,4 @@ router.put('/customer/:routeId/:customerId/status', async (req, res) => {
   }
 });
 
-export default router;
+module.exports = router;

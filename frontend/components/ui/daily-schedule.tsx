@@ -38,11 +38,17 @@ const DailySchedule: React.FC<DailyScheduleProps> = ({ schedule, onCustomerPress
     return `${mins}m`;
   };
 
-  const formatCurrency = (amount: number): string => {
+  const formatCurrency = (amount: number | undefined | null): string => {
+    if (amount === null || amount === undefined || isNaN(amount)) {
+      return '£0.00';
+    }
     return `£${amount.toFixed(2)}`;
   };
 
-  const formatPercent = (percent: number): string => {
+  const formatPercent = (percent: number | undefined | null): string => {
+    if (percent === null || percent === undefined || isNaN(percent)) {
+      return '0.0%';
+    }
     return `${percent > 0 ? '+' : ''}${percent.toFixed(1)}%`;
   };
 

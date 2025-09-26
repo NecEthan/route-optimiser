@@ -277,7 +277,7 @@ export default function AddJobModal({ visible, onClose, onCustomerAdded }: AddCu
                 <GooglePlacesTextInput
                   apiKey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? ''}
                   fetchDetails={true}
-                  detailsProxyUrl="http://localhost:3000/api/places-details"
+                  detailsProxyUrl="http://192.168.1.120:3000/api/places-details"
                   onPlaceSelect={(place: any) => {
                     const address = place.text?.text ||
                       place.structuredFormat?.mainText ||

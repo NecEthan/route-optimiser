@@ -296,6 +296,7 @@ app.use('/api/user', require('./routes/user'));
 app.use('/api/customers', require('./routes/customers'));
 app.use('/api/routes', require('./routes/routes'));
 app.use('/api/accounting', require('./routes/accounting'));
+app.use('/api/schedule', require('./routes/schedule'));
 
 // Basic route
 app.get('/', (req, res) => {

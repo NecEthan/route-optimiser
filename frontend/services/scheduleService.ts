@@ -107,21 +107,16 @@ class ScheduleService {
         lng: -0.1278
       };
       
-      const result = await windowCleanerService.generate1WeekSchedule(
+      const result = await windowCleanerService.smartOptimizeSchedule(
         userId,
         workSchedule,
         cleanerLocation
       );
       
-      if (result.success && result.data) {
-        console.log('✅ Successfully fetched optimized schedule');
-        this.cachedSchedule = result.data;
-        this.cacheTimestamp = now;
-        return result.data;
-      } else {
-        console.error('❌ Failed to fetch schedule:', result.error);
-        return null;
-      }
+      console.log('✅ Successfully fetched optimized schedule');
+      this.cachedSchedule = result;
+      this.cacheTimestamp = now;
+      return result;
     } catch (error: any) {
       console.error('❌ Error fetching optimized schedule:', error);
       return null;
@@ -136,7 +131,51 @@ class ScheduleService {
       const schedule = await this.getOptimizedSchedule(userId);
       if (!schedule) return null;
 
-      return schedule.schedule[date] || null;
+      // Schedule is an array, find the day with matching date
+      if (schedule.schedule && Array.isArray(schedule.schedule)) {
+        const dayData = schedule.schedule.find(day => day.date === date);
+        if (dayData) {
+          // Calculate missing fields from customer data
+          const totalRevenue = dayData.customers?.reduce((sum: number, customer: any) => sum + (customer.price || 0), 0) || 0;
+          const totalDuration = dayData.customers?.reduce((sum: number, customer: any) => sum + (customer.estimated_duration || 0), 0) || 0;
+          
+          return {
+            ...dayData,
+            day: dayData.day_name || dayData.day || '',
+            max_hours: 8, // Default work hours
+            total_duration_minutes: totalDuration,
+            total_revenue: totalRevenue,
+            estimated_travel_time: 0,
+            customers: dayData.customers?.map((customer: any) => ({
+              id: customer.customer_id || customer.id,
+              name: customer.customer_name || customer.name,
+              address: customer.customer_address || customer.address,
+              lat: customer.lat || 0,
+              lng: customer.lng || 0,
+              price: customer.price || 0,
+              estimated_duration: customer.estimated_duration || 0,
+              days_since_cleaned: customer.days_since_cleaned || 0,
+              days_overdue: customer.days_overdue || 0,
+              urgency_score: customer.urgency_score || 0,
+              next_due_date: customer.next_due_date || '',
+              route_order: customer.visit_order || customer.route_order || 0
+            })) || [],
+            time_savings: {
+              optimized_travel_time_minutes: 0,
+              unoptimized_travel_time_minutes: 0,
+              time_savings_minutes: 0,
+              time_savings_hours: 0,
+              fuel_savings_estimate_gbp: 0,
+              efficiency_improvement_percent: 0,
+              extra_customers_possible: 0
+            }
+          };
+        }
+        return null;
+      }
+      
+      // Fallback: if schedule is an object with date keys
+      return schedule.schedule?.[date] || null;
     } catch (error) {
       console.error(`❌ Error getting schedule for date ${date}:`, error);
       return null;
@@ -151,7 +190,13 @@ class ScheduleService {
       const schedule = await this.getOptimizedSchedule(userId);
       if (!schedule) return [];
 
-      return Object.keys(schedule.schedule).sort();
+      // Schedule is an array, extract dates
+      if (schedule.schedule && Array.isArray(schedule.schedule)) {
+        return schedule.schedule.map(day => day.date).sort();
+      }
+      
+      // Fallback: if schedule is an object with date keys
+      return Object.keys(schedule.schedule || {}).sort();
     } catch (error) {
       console.error('❌ Error getting available dates:', error);
       return [];
