@@ -25,15 +25,6 @@ interface PaymentMethod {
   updated_at: string;
 }
 
-interface BillingHistoryItem {
-  id: string;
-  date: string;
-  amount: number;
-  status: 'paid' | 'pending' | 'failed';
-  invoiceNumber: string;
-  description: string;
-}
-
 export default function PaymentSettingsScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -101,32 +92,7 @@ const fetchSubscription = async () => {
   };
   
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
-  const [subscription, setSubscription] = useState<any>(null);  const [billingHistory] = useState<BillingHistoryItem[]>([
-    {
-      id: '1',
-      date: '2025-09-01',
-      amount: 9.99,
-      status: 'paid',
-      invoiceNumber: 'INV-2025-001',
-      description: 'Basic Plan - Monthly'
-    },
-    {
-      id: '2',
-      date: '2025-08-01',
-      amount: 9.99,
-      status: 'paid',
-      invoiceNumber: 'INV-2025-002',
-      description: 'Basic Plan - Monthly'
-    },
-    {
-      id: '3',
-      date: '2025-07-01',
-      amount: 9.99,
-      status: 'paid',
-      invoiceNumber: 'INV-2025-003',
-      description: 'Basic Plan - Monthly'
-    }
-  ]);
+  const [subscription, setSubscription] = useState<any>(null); 
 
   const getCardName = (cardType: string | null | undefined) => {
     if (!cardType) return 'Credit Card';
@@ -374,31 +340,8 @@ const fetchSubscription = async () => {
     });
   };
 
-  const getStatusColor = (status: BillingHistoryItem['status']) => {
-    switch (status) {
-      case 'paid':
-        return '#28a745';
-      case 'pending':
-        return '#ffc107';
-      case 'failed':
-        return '#dc3545';
-      default:
-        return '#666';
-    }
-  };
+  
 
-  const getStatusText = (status: BillingHistoryItem['status']) => {
-    switch (status) {
-      case 'paid':
-        return 'Paid';
-      case 'pending':
-        return 'Pending';
-      case 'failed':
-        return 'Failed';
-      default:
-        return 'Unknown';
-    }
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -499,47 +442,6 @@ const fetchSubscription = async () => {
               </View>
             )}
           </View>
-        </View>
-
-        {/* Billing History Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Billing History</Text>
-            <TouchableOpacity>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
-          </View>
-          
-          {billingHistory.slice(0, 3).map((item) => (
-            <View key={item.id} style={styles.historyItem}>
-              <View style={styles.historyContent}>
-                <View style={styles.historyLeft}>
-                  <Text style={styles.historyDate}>{formatDate(item.date)}</Text>
-                  <Text style={styles.historyDescription}>{item.description}</Text>
-                  <Text style={styles.historyInvoice}>Invoice: {item.invoiceNumber}</Text>
-                </View>
-                
-                <View style={styles.historyRight}>
-                  <Text style={styles.historyAmount}>${item.amount.toFixed(2)}</Text>
-                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
-                    <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-                      {getStatusText(item.status)}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-              
-              <View style={styles.historyActions}>
-                <TouchableOpacity
-                  onPress={() => handleDownloadInvoice(item.invoiceNumber)}
-                  style={styles.downloadButton}
-                >
-                  <Ionicons name="download-outline" size={16} color="#007AFF" />
-                  <Text style={styles.downloadText}>Download</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
         </View>
 
         {/* Security Section */}
