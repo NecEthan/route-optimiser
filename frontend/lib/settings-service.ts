@@ -79,6 +79,66 @@ class SettingsService {
         }
     }
 
+    async updatePaymentMethod(paymentMethodId: string, paymentData: {
+        stripe_payment_method_id: string;
+        last_four: string;
+        card_type: string;
+        expiration_month: number;
+        expiration_year: number;
+        cardholder_name: string;
+        bank_name?: string | null;
+        status?: string;
+    }): Promise<any> {
+        try {
+            console.log('🚀 UPDATE PAYMENT METHOD CALLED!');
+            console.log('🔍 Payment Method ID:', paymentMethodId);
+            console.log('📦 Payment Data:', paymentData);
+            console.log('🌐 API URL:', `${API_CONFIG.BASE_URL}/api/payment/method/${paymentMethodId}`);
+
+            const headers = await this.getAuthHeaders();
+            console.log('🔑 Auth Headers:', headers);
+
+            const response = await fetch(`${API_CONFIG.BASE_URL}/api/payment/method/${paymentMethodId}`, {
+                method: 'PUT',
+                headers: headers,
+                body: JSON.stringify(paymentData)
+            });
+
+            console.log('📡 Response Status:', response.status);
+
+            if (!response.ok) {
+                console.error('❌ Response not OK:', response.status, response.statusText);
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.message || 'Unknown error'}`);
+            }
+
+            const result = await response.json();
+            console.log('✅ Payment method updated successfully:', result);
+            return result;
+        } catch (error) {
+            console.error('💥 Error updating payment method:', error);
+            throw error;
+        }
+    }
+
+    async createTestData(): Promise<any> {
+        try {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/api/user/create-test-data`, {
+                method: 'POST',
+                headers: await this.getAuthHeaders(),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error creating test data:', error);
+            throw error;
+        }
+    }
+
 }
 
 export const settingsService = new SettingsService();

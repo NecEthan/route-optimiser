@@ -293,6 +293,7 @@ app.get('/api/places-details/:placeId', async (req, res) => {
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/user', require('./routes/user'));
+app.use('/api/payment', require('./routes/payment'));
 app.use('/api/customers', require('./routes/customers'));
 app.use('/api/routes', require('./routes/routes'));
 app.use('/api/accounting', require('./routes/accounting'));

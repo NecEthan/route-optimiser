@@ -135,17 +135,38 @@ const fetchSubscription = async () => {
   };
 
   const handleCardSubmit = async () => {
+    console.log('🚀 === HANDLE CARD SUBMIT CALLED ===');
+    console.log('🔍 cardToReplace:', cardToReplace);
+    console.log('📱 Platform:', Platform.OS);
+    console.log('🎯 CardField available:', CardField !== null);
+    console.log('⚡ Stripe available:', !!stripe?.createPaymentMethod);
+    
     // Validate inputs
     if (!newCard.cardholderName.trim()) {
+      console.log('❌ Validation failed: Missing cardholder name');
       Alert.alert('Error', 'Please enter cardholder name');
       return;
     }
+    
+    console.log('📝 newCard state:', newCard);
+    console.log('🃏 CardField value:', CardField);
 
     // Check if using Stripe CardField or legacy form
     const isUsingStripeCardField = CardField !== null && newCard.cardComplete;
     const isUsingLegacyForm = CardField === null && newCard.cardNumber && newCard.expiryMonth && newCard.expiryYear && newCard.cvc;
     
+    console.log('🔍 Validation check:', {
+      isUsingStripeCardField,
+      isUsingLegacyForm,
+      cardComplete: newCard.cardComplete,
+      hasCardNumber: !!newCard.cardNumber,
+      hasExpiryMonth: !!newCard.expiryMonth,
+      hasExpiryYear: !!newCard.expiryYear,
+      hasCvc: !!newCard.cvc
+    });
+    
     if (!isUsingStripeCardField && !isUsingLegacyForm) {
+      console.log('❌ Validation failed: Card details incomplete');
       Alert.alert('Error', 'Please enter complete card details');
       return;
     }
@@ -201,63 +222,107 @@ const fetchSubscription = async () => {
           exp_year: (paymentMethod as any).Card?.expYear || 0,
         });
 
-        // Send validated token to backend
-        const result = await settingsService.addPaymentMethodWithToken({
-          paymentMethodId: paymentMethod.id, 
-          cardholderName: newCard.cardholderName,
-          replaceCardId: cardToReplace,
-        });
+        // Handle card replacement or addition
+        if (cardToReplace) {
+          console.log('🔄 Updating existing payment method with ID:', cardToReplace);
+          
+          // Prepare update data according to database schema
+          const updateData = {
+            stripe_payment_method_id: paymentMethod.id,
+            last_four: (paymentMethod as any).Card?.last4 || 'xxxx',
+            card_type: (paymentMethod as any).Card?.brand || 'unknown',
+            expiration_month: (paymentMethod as any).Card?.expMonth || 0,
+            expiration_year: (paymentMethod as any).Card?.expYear || 0,
+            cardholder_name: newCard.cardholderName,
+            bank_name: (paymentMethod as any).Card?.issuer || null,
+            status: 'active'
+          };
 
-        if (result.success) {
-          if (cardToReplace) {
-            // Replace existing card
-            setPaymentMethods(prev => 
-              prev.map(method => 
-                method.id === cardToReplace 
-                  ? { 
-                      ...result.data, 
-                      is_default: method.is_default
-                    } 
-                  : method
-              )
-            );
-            Alert.alert('Success', 'Payment method replaced successfully!');
-          } else {
-            // Add new card
-            const newPaymentMethod = { ...result.data };
-            setPaymentMethods(prev => [...prev, newPaymentMethod]);
-            Alert.alert('Success', 'Payment method added successfully!');
+          console.log('📦 Sending update data:', updateData);
+
+          try {
+            const result = await settingsService.updatePaymentMethod(cardToReplace, updateData);
+            
+            if (result.success) {
+              console.log('✅ Payment method updated successfully!');
+              Alert.alert('Success', 'Payment method updated successfully!');
+              
+              // Refresh the payment method data
+              await fetchPaymentMethod();
+            } else {
+              console.error('❌ Update failed:', result.message);
+              Alert.alert('Error', result.message || 'Failed to update payment method');
+              return;
+            }
+          } catch (updateError) {
+            console.error('💥 Update error:', updateError);
+            const errorMessage = updateError instanceof Error ? updateError.message : 'Unknown error';
+            Alert.alert('Error', `Failed to update payment method: ${errorMessage}`);
+            return;
           }
-
-          // Reset form and close modal
-          setNewCard({
-            cardholderName: '',
-            cardComplete: false,
-            cardDetails: null,
-            cardNumber: '',
-            expiryMonth: '',
-            expiryYear: '',
-            cvc: '',
-          });
-          setCardToReplace(null);
-          setShowAddCardModal(false);
         } else {
-          Alert.alert('Error', result.message || 'Failed to save payment method');
+          console.log('➕ Would add new payment method (not implemented yet)');
+          Alert.alert('Info', 'Add new payment method functionality not implemented yet');
         }
 
+        setNewCard({
+          cardholderName: '',
+          cardComplete: false,
+          cardDetails: null,
+          cardNumber: '',
+          expiryMonth: '',
+          expiryYear: '',
+          cvc: '',
+        });
+        setCardToReplace(null);
+        setShowAddCardModal(false);
       } else {
-        // LEGACY FORM VALIDATION - Web fallback (still uses mock data for demo)
-        console.log('⚠️ Using legacy form validation (web fallback)');
+        // FALLBACK PATH - For testing or when Stripe is not available
+        console.log('⚠️ Using fallback path (Stripe not available)');
+        console.log('🔍 CardField available:', CardField !== null);
+        console.log('🔍 Stripe available:', !!stripe?.createPaymentMethod);
         
-        // Basic validation for legacy form
-        const cardNumberClean = newCard.cardNumber.replace(/\s/g, '');
-        if (cardNumberClean.length !== 16) {
-          Alert.alert('Error', 'Please enter a valid 16-digit card number');
-          return;
-        }
+        if (cardToReplace) {
+          console.log('🔄 [FALLBACK] Updating existing payment method with ID:', cardToReplace);
+          
+          // Mock payment method data for testing
+          const mockUpdateData = {
+            stripe_payment_method_id: `pm_test_${Date.now()}`,
+            last_four: newCard.cardNumber ? newCard.cardNumber.slice(-4) : '4242',
+            card_type: 'visa',
+            expiration_month: parseInt(newCard.expiryMonth) || 12,
+            expiration_year: parseInt(newCard.expiryYear) || 2028,
+            cardholder_name: newCard.cardholderName,
+            bank_name: 'Test Bank',
+            status: 'active'
+          };
 
-        // Simulate API call for demo purposes
-        await new Promise(resolve => setTimeout(resolve, 2000));
+          console.log('📦 [FALLBACK] Sending update data:', mockUpdateData);
+
+          try {
+            const result = await settingsService.updatePaymentMethod(cardToReplace, mockUpdateData);
+            
+            if (result.success) {
+              console.log('✅ [FALLBACK] Payment method updated successfully!');
+              Alert.alert('Success', 'Payment method updated successfully!');
+              
+              // Refresh the payment method data
+              await fetchPaymentMethod();
+            } else {
+              console.error('❌ [FALLBACK] Update failed:', result.message);
+              Alert.alert('Error', result.message || 'Failed to update payment method');
+              return;
+            }
+          } catch (updateError) {
+            console.error('💥 [FALLBACK] Update error:', updateError);
+            const errorMessage = updateError instanceof Error ? updateError.message : 'Unknown error';
+            Alert.alert('Error', `Failed to update payment method: ${errorMessage}`);
+            return;
+          }
+        } else {
+          console.log('➕ [FALLBACK] Would add new payment method (not implemented yet)');
+          Alert.alert('Info', 'Add new payment method functionality not implemented yet');
+        }
 
         setNewCard({
           cardholderName: '',
