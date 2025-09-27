@@ -127,7 +127,7 @@ export class WindowCleanerOptimizationService {
       console.log(`📊 Work Schedule:`, workSchedule);
       
       const response: AxiosResponse<OptimizedScheduleResponse> = await axios.post(
-        `${this.baseUrl}/schedule/smart-optimize/${userId}`,
+        `${this.baseUrl}/smart-optimize/${userId}`,
         requestData,
         {
           headers: {
@@ -186,7 +186,7 @@ export class WindowCleanerOptimizationService {
       console.log(`📊 Work Schedule:`, workSchedule);
       
       const response: AxiosResponse<OptimizedScheduleResponse> = await axios.post(
-        `${this.baseUrl}/schedule/smart-optimize/${userId}`,
+        `${this.baseUrl}/smart-optimize/${userId}`,
         requestData,
         {
           headers: {
@@ -293,7 +293,7 @@ export class WindowCleanerOptimizationService {
       console.log(`📊 Work Schedule:`, workSchedule);
       
       const response: AxiosResponse<{ success: boolean; data: OptimizedScheduleResponse & { isFirstTime: boolean; protectedDates?: string[] } }> = await axios.post(
-        `${this.baseUrl}/schedule/smart-optimize/${userId}`,
+        `${this.baseUrl}/smart-optimize/${userId}`,
         requestData,
         {
           headers: {

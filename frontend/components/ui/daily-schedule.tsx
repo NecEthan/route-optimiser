@@ -24,7 +24,8 @@ const DailySchedule: React.FC<DailyScheduleProps> = ({ schedule, onCustomerPress
       <View style={styles.emptyContainer}>
         <Ionicons name="calendar-outline" size={48} color="#ccc" />
         <Text style={styles.emptyTitle}>No Schedule Available</Text>
-        <Text style={styles.emptySubtitle}>No optimized route found for this date</Text>
+        <Text style={styles.emptySubtitle}>Add customers first to create an optimized schedule</Text>
+        <Text style={styles.emptyHint}>Go to the Customers tab and add your first customer!</Text>
       </View>
     );
   }
@@ -215,6 +216,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
+  },
+  emptyHint: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
   },
   header: {
     backgroundColor: '#fff',
