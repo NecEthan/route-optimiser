@@ -17,11 +17,29 @@ class SettingsService {
             console.log('Fetching subscription for user:', userId);
 
             const url = `${API_CONFIG.BASE_URL}/api/user/subscription?userId=${userId}`;
+            console.log('🌐 Subscription API Request URL:', url);
+            console.log('🔧 BASE_URL:', API_CONFIG.BASE_URL);
+
+            const headers = await this.getAuthHeaders();
+            console.log('📤 Subscription request headers:', headers);
 
             const response = await fetch(url, {
                 method: 'GET',
-                headers: await this.getAuthHeaders(),
+                headers: headers,
             });
+
+            console.log('📡 Subscription response status:', response.status);
+            
+            // Check if response is HTML vs JSON
+            const contentType = response.headers.get('content-type');
+            console.log('📄 Subscription Content-Type:', contentType);
+            
+            if (contentType && contentType.includes('text/html')) {
+                console.error('❌ Subscription API returned HTML instead of JSON!');
+                const htmlText = await response.text();
+                console.log('📄 HTML Response (first 200 chars):', htmlText.substring(0, 200));
+                throw new Error('Subscription API returned HTML instead of JSON - check server configuration');
+            }
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -41,11 +59,30 @@ class SettingsService {
             console.log('Fetching payment method for user:', userId);
 
             const url = `${API_CONFIG.BASE_URL}/api/user/payment-method?userId=${userId}`;
+            console.log('🌐 API Request URL:', url);
+            console.log('🔧 BASE_URL:', API_CONFIG.BASE_URL);
+
+            const headers = await this.getAuthHeaders();
+            console.log('📤 Request headers:', headers);
 
             const response = await fetch(url, {
                 method: 'GET',
-                headers: await this.getAuthHeaders(),
+                headers: headers,
             });
+
+            console.log('📡 Response status:', response.status);
+            console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+            
+            // Check if response is HTML vs JSON
+            const contentType = response.headers.get('content-type');
+            console.log('📄 Content-Type:', contentType);
+            
+            if (contentType && contentType.includes('text/html')) {
+                console.error('❌ Received HTML instead of JSON - API call redirected!');
+                const htmlText = await response.text();
+                console.log('📄 HTML Response (first 200 chars):', htmlText.substring(0, 200));
+                throw new Error('API call returned HTML instead of JSON - check server configuration');
+            }
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);

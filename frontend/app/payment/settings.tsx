@@ -78,8 +78,18 @@ const fetchPaymentMethod = async () => {
 
 const fetchSubscription = async () => {
     try {
-      const response = await settingsService.getUserSubscription();
-      console.log('User subscription data:', response);
+      console.log('🔍 Fetching subscription...');
+      const user = await authService.getUser();
+      console.log('👤 Current user for subscription:', user?.id);
+      
+      if (!user?.id) {
+        console.log('❌ No user ID found for subscription');
+        setSubscription(null);
+        return;
+      }
+      
+      const response = await settingsService.getUserSubscription(user.id);
+      console.log('📡 Subscription API response:', response);
       
       if (response.success && response.data) {
         setSubscription(response.data);
